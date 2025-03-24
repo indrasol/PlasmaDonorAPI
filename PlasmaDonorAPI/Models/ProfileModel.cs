@@ -72,7 +72,7 @@ namespace NewPlasmaDonorsAPI.Models
 
         public long? HomeCenterId { get; set; }
 
-        public long? hobbies { get; set; }
+        //public long? hobbies { get; set; }
 
         public string interests { get; set; }
 
