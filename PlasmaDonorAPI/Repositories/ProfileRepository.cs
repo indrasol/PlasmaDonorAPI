@@ -13,6 +13,46 @@ namespace PlasmaDonorAPI.Repositories
         {
             _context = context;
         }
+        string profileQuery = @"
+        SELECT a.email, a.first_name, a.last_name, a.phone_number, a.gender, a.dob,  
+        a.is_donor, a.is_influencer, a.created_on, a.school_attended,  
+        lang.md_title AS Language,  
+        race.md_title AS Race,  
+        relationship.md_title AS Relationship,  
+        occupation.md_title AS Occupation,  
+        education.md_title AS Education,  
+        addr.address_line AS Address, addr.city, addr.state, addr.country,  
+        addr.latitude, addr.longitude, addr.postal_code,  
+        GROUP_CONCAT(DISTINCT influencer.email SEPARATOR ',') AS InfluencedByList,  
+        GROUP_CONCAT(DISTINCT donors.email SEPARATOR ',') AS DonorList,  
+        SUM(infRelationship.md_score) AS InfScore,  
+        GROUP_CONCAT(DISTINCT hobbies.md_title SEPARATOR ',') AS HobbiesList,  
+        GROUP_CONCAT(DISTINCT interest.md_title SEPARATOR ',') AS InterestList,  
+        GROUP_CONCAT(DISTINCT influencer.id SEPARATOR ',') AS InfluencedByIds,  
+        GROUP_CONCAT(DISTINCT hobbies.id SEPARATOR ',') AS HobbieIds,  
+        GROUP_CONCAT(DISTINCT interest.id SEPARATOR ',') AS InterestIds,  
+        companyLocation.id AS CompanyLocationId, companyLocation.site_id AS SiteId,  
+        a.relship_status AS RelationshipStatus, a.id AS ProfileId  
+        FROM profiles a  
+        LEFT JOIN master_data lang ON a.language_id = lang.id  
+        LEFT JOIN master_data race ON a.race_id = race.id  
+        LEFT JOIN master_data relationship ON a.relationship_id = relationship.id  
+        LEFT JOIN master_data occupation ON a.occupation_id = occupation.id  
+        LEFT JOIN master_data education ON a.education_id = education.id  
+        LEFT JOIN company_locations companyLocation ON a.home_center_id = companyLocation.id  
+        LEFT JOIN address addr ON a.address_id = addr.id  
+        LEFT JOIN donar_influencer_map influencerMap ON a.id = influencerMap.profile_id  
+        LEFT JOIN profiles influencer ON influencerMap.influenced_by = influencer.id  
+        LEFT JOIN master_data infRelationship ON influencer.relationship_id = infRelationship.id  
+        LEFT JOIN donar_influencer_map donorMap ON donorMap.influenced_by = a.id  
+        LEFT JOIN profiles donors ON donors.id = donorMap.profile_id  
+        LEFT JOIN profile_md_map hobbiesMap ON a.id = hobbiesMap.profile_id  
+        LEFT JOIN master_data hobbies ON hobbiesMap.md_id = hobbies.id AND hobbies.md_type= 'hobbies'  
+        LEFT JOIN profile_md_map interestMap ON a.id = interestMap.profile_id  
+        LEFT JOIN master_data interest ON interestMap.md_id = interest.id AND interest.md_type= 'interests'  
+        WHERE a.id IS NOT NULL AND (a.status IS NULL OR a.status <> 'deleted')";
+
+        String grpBy = "GROUP BY  a.id ";
 
         public async Task<ProfileModel> GetByIdAsync(long id)
         {
@@ -24,6 +64,27 @@ namespace PlasmaDonorAPI.Repositories
             return await _context.profiles.FirstOrDefaultAsync(p => p.email == email);
         }
 
+        public async Task<List<ProfileDto>> GetAllInfluencersByHomeCenterAsync(long hcId)
+        {
+            var query = profileQuery + " AND a.home_center_id = {0} AND a.is_influencer = true " + grpBy;
+
+            var profiles = await _context.profiles
+                .FromSqlRaw(query, hcId)
+                .Select(p => new ProfileDto
+                {
+                    email = p.email,
+                    firstName = p.firstName,
+                    lastName = p.lastName,
+                    phoneNumber = p.phoneNumber,
+                    isInfluencer = p.isInfluencer,
+                    homeCenterId = p.homeCenterId
+                })
+                .ToListAsync();
+
+            return profiles;
+        }
+
+
         public async Task<List<ProfileModel>> GetAllInfluencersByHomeCenterIdAsync(int hcId)
         {
             return await _context.profiles.Where(p => p.isInfluencer==true && p.homeCenterId == hcId).ToListAsync();
@@ -34,23 +95,44 @@ namespace PlasmaDonorAPI.Repositories
             return await _context.profiles.Where(p => p.isInfluencer == true).ToListAsync();
         }
 
-        public async Task<List<ProfileModel>> GetAllProfilesAsync()
+        public async Task<List<ProfileDto>> GetAllProfilesAsync()
         {
-            return await _context.profiles
-                .Where(p => p.Status == null || p.Status != "deleted")
-                .Include(p => p.Language)
-                .Include(p => p.Race)
-                .Include(p => p.Relationship)
-                .Include(p => p.Occupation)
-                .Include(p => p.Education)
-                .Include(p => p.Address)
-                .Include(p => p.HomeCenter)
-                .Include(p => p.hobbies)
-                .Include(p => p.interests)
-                .Include(p => p.InfluencedBy)
-                .Include(p => p.isDonor)
+            string query = profileQuery + grpBy;
+
+            var result = await _context.profiles
+                .FromSqlRaw(query)
+                .Select(p => new ProfileDto
+                {
+                    email = p.email,
+                    firstName = p.firstName,
+                    lastName = p.lastName,
+                    phoneNumber = p.phoneNumber,
+                    
+                })
                 .ToListAsync();
+
+            return result;
         }
+
+
+
+        //public async Task<List<ProfileModel>> GetAllProfilesAsync()
+        //{
+        //    return await _context.profiles
+        //        .Where(p => p.Status == null || p.Status != "deleted")
+        //        .Include(p => p.Language)
+        //        .Include(p => p.Race)
+        //        .Include(p => p.Relationship)
+        //        .Include(p => p.Occupation)
+        //        .Include(p => p.Education)
+        //        .Include(p => p.Address)
+        //        .Include(p => p.HomeCenter)
+        //        //.Include(p => p.hobbies)
+        //        .Include(p => p.interests)
+        //        .Include(p => p.InfluencedBy)
+        //        .Include(p => p.isDonor)
+        //        .ToListAsync();
+        //}
 
         public async Task<List<ProfileModel>> GetAllInfluencersDetailedAsync()
         {
@@ -63,7 +145,7 @@ namespace PlasmaDonorAPI.Repositories
                 .Include(p => p.Education)
                 .Include(p => p.Address)
                 .Include(p => p.HomeCenter)
-                .Include(p => p.hobbies)
+                //.Include(p => p.hobbies)
                 .Include(p => p.interests)
                 .Include(p => p.InfluencedBy)
                 .Include(p => p.isDonor)

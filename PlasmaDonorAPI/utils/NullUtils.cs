@@ -4,17 +4,32 @@ namespace NewPlasmaDonorsAPI.utils
 {
     public static class NullUtils
     {
-        // Check if string is valid (non-null, non-empty, and not "null")
-        public static bool IsValid(string s)
-        {
-            return !string.IsNullOrWhiteSpace(s) && !s.Equals("null", StringComparison.OrdinalIgnoreCase);
-        }
 
-        // Check if number is valid (non-null)
-        public static bool IsValid(int? s)
+        public static bool IsValid(object value)
         {
-            return s.HasValue;
+            if (value is string s)
+            {
+                return !string.IsNullOrWhiteSpace(s) && !s.Trim().Equals("null", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (value is int or double or decimal or float or long)
+            {
+                return true; // Non-null numeric values are always valid
+            }
+
+            return value != null; // General null check for other types
         }
+        // Check if string is valid (non-null, non-empty, and not "null")
+        //public static bool IsValid(string s)
+        //{
+        //    return !string.IsNullOrWhiteSpace(s) && !s.Equals("null", StringComparison.OrdinalIgnoreCase);
+        //}
+
+        //// Check if number is valid (non-null)
+        //public static bool IsValid(int? s)
+        //{
+        //    return s.HasValue;
+        //}
 
         // Check if collection is valid (non-null and not empty)
         public static bool IsValid<T>(ICollection<T> cols)
@@ -29,10 +44,10 @@ namespace NewPlasmaDonorsAPI.utils
         }
 
         // Check if object is valid (non-null)
-        public static bool IsValid(object o)
-        {
-            return o != null;
-        }
+        //public static bool IsValid(object o)
+        //{
+        //    return o != null;
+        //}
 
         // Return the value or default if the value is not valid
         public static string GetOrDefault(string val, string defaultVal)

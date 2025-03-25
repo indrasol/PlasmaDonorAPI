@@ -124,5 +124,7 @@ namespace NewPlasmaDonorsAPI.utils
 		{
 			return !string.IsNullOrEmpty(value);
 		}
+
+
 	}
 }

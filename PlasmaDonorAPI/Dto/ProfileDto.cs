@@ -55,10 +55,12 @@ namespace NewPlasmaDonorsAPI.Dto
         public string? schoolAttended { get; set; }
 
         public List<string> interests = new List<string>();
-        public string? interestIds { get; set; }
+        public string? interestStr { get; set; }
+        public List<long>? interestIds { get; set; }
 
         public List<string>? hobbies = new List<string>();
         public string? hobbieStr { get; set; }
+        public List<long>? hobbiesIds { get; set; }
         public long homeCenterId { get; set; }
         public string? homeCenter { get; set; }
         public string? createdOn { get; set; }

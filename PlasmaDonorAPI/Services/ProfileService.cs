@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using PlasmaDonorAPI.Repositories;
+﻿using System.Text;
+using DocumentFormat.OpenXml.Drawing;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NewPlasmaDonorsAPI.Data;
 using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.mapper;
 using NewPlasmaDonorsAPI.Models;
 using NewPlasmaDonorsAPI.Repositories;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
+using NewPlasmaDonorsAPI.utils;
+using PlasmaDonorAPI.Repositories;
 
 namespace NewPlasmaDonorsAPI.Services
 {
@@ -23,12 +25,107 @@ namespace NewPlasmaDonorsAPI.Services
             MdService mdService,
             ILogger<ProfileService> logger,
             IHttpContextAccessor httpContextAccessor,
-            ProfileRepository profileRepository) :base(logger, httpContextAccessor)// Fix: Pass logger to base constructor
+            ProfileRepository profileRepository) : base(logger, httpContextAccessor)// Fix: Pass logger to base constructor
         {
             _context = context;
             _dimRepo = dimRepo;
             _mdService = mdService;
             _profileRepository = profileRepository;
+        }
+
+        public ResInfo SearchProfiles(ProfileDto profileReq)
+        {
+            if (profileReq == null)
+            {
+                profileReq = new ProfileDto();
+            }
+
+            var query = @"
+            SELECT a.email, a.first_name, a.last_name, a.phone_number, a.gender, a.dob,   
+                   a.is_donor, a.is_influencer, a.created_on, a.school_attended,  
+                   lang.id, lang.md_title,  
+                   race.id, race.md_title,  
+                   relationship.id, relationship.md_title,  
+                   occupation.id, occupation.md_title,  
+                   education.id, education.md_title,  
+                   addr.id, addr.address_line, addr.city, addr.state, addr.state_code,  
+                   addr.country, addr.country_code, addr.latitude, addr.longitude,   
+                   addr.full_address, addr.postal_code,  
+                   STRING_AGG(DISTINCT influencer.email, ',') AS influencedByList,  
+                   STRING_AGG(DISTINCT donors.email, ',') AS donorList,  
+                   SUM(infRelationship.md_score) AS infScore,  
+                   STRING_AGG(DISTINCT hobbies.md_title, ',') AS hobbiesList,  
+                   STRING_AGG(DISTINCT interest.md_title, ',') AS interestList,  
+                   STRING_AGG(DISTINCT influencer.id, ',') AS influencedByIds,  
+                   STRING_AGG(DISTINCT hobbies.id, ',') AS hobbieIds,  
+                   STRING_AGG(DISTINCT interest.id, ',') AS interestIds,  
+                   companyLocation.id, companyLocation.site_id,  
+                   a.relship_status, a.id  
+            FROM profiles a  
+            LEFT JOIN master_data lang ON a.language_id = lang.id  
+            LEFT JOIN master_data race ON a.race_id = race.id  
+            LEFT JOIN master_data relationship ON a.relationship_id = relationship.id  
+            LEFT JOIN master_data occupation ON a.occupation_id = occupation.id  
+            LEFT JOIN master_data education ON a.education_id = education.id  
+            LEFT JOIN company_locations companyLocation ON a.home_center_id = companyLocation.id  
+            LEFT JOIN address addr ON a.address_id = addr.id  
+            LEFT JOIN donar_influencer_map influencerMap ON a.id = influencerMap.profile_id  
+            LEFT JOIN profiles influencer ON influencerMap.influenced_by = influencer.id  
+            LEFT JOIN master_data infRelationship ON influencer.relationship_id = infRelationship.id  
+            LEFT JOIN donar_influencer_map donorMap ON donorMap.influenced_by = a.id  
+            LEFT JOIN profiles donors ON donors.id = donorMap.profile_id  
+            LEFT JOIN profile_md_map hobbiesMap ON a.id = hobbiesMap.profile_id  
+            LEFT JOIN master_data hobbies ON hobbiesMap.md_id = hobbies.id AND hobbies.md_type = 'hobbies'  
+            LEFT JOIN profile_md_map interestMap ON a.id = interestMap.profile_id  
+            LEFT JOIN master_data interest ON interestMap.md_id = interest.id AND interest.md_type = 'interests'  
+            WHERE a.id IS NOT NULL ";
+
+            var sb = new StringBuilder(query);
+
+            // **Filtering Conditions**
+            if (profileReq.isDonor.HasValue && profileReq.isDonor.Value)
+            {
+                sb.Append(" AND a.is_donor = 1 ");
+            }
+
+            if (profileReq.isInfluencer.HasValue && profileReq.isInfluencer.Value)
+            {
+                sb.Append(" AND a.is_influencer = 1 ");
+            }
+
+            if (profileReq.homeCenterId > 0)
+            {
+                sb.Append($" AND a.home_center_id = {profileReq.homeCenterId}");
+            }
+            if (profileReq.influencedById > 0)
+            {
+                sb.Append($" AND influencer.id = {profileReq.influencedById}");
+            }
+
+            if (profileReq.relationshipId.HasValue)
+            {
+                sb.Append($" AND a.relationship_id = {profileReq.relationshipId.Value}");
+            }
+
+            if (!string.IsNullOrEmpty(profileReq.gender))
+            {
+                sb.Append($" AND a.gender = '{profileReq.gender}'");
+            }
+
+            if (profileReq.ageGroup > 0)
+            {
+                var sqlUtilService = new SqlUtilService();
+                sb.Append($" AND {sqlUtilService.AgeGroupQuery(profileReq.ageGroup)}");
+            }
+
+            // **Executing the Query**
+            var results = _context.Database.SqlQuery<ProfileDto>($"{sb.ToString()}").ToList();
+
+            return new ResInfo
+            {
+                Status = true,
+                Data = results
+            };
         }
 
         public ResInfo AddProfile(ProfileDto info)
@@ -144,51 +241,192 @@ namespace NewPlasmaDonorsAPI.Services
             return Success(savedProfile);
         }
 
-        public ResInfo GetInfluencersForLb()
+        public ResInfo GetInfluencersForLb(int? hcId)
         {
-            _logger.LogInformation("Getting influencers for LB.");
+            //_logger.LogInformation("Getting influencers for LB.");
 
-            // Fetch the list of influencers from the ProfileRepository
-            var list = _profileRepository.GetAllInfluencersAsync().Result;
+            List<ProfileModel> list = new List<ProfileModel>();
 
-            // Map the list of ProfileModel to MdInfo
+            if (hcId != null && hcId < 0)
+            {
+                hcId = null;
+            }
+
+            if (NullUtils.IsValid(hcId))
+            {
+                list = _profileRepository.GetAllInfluencersByHomeCenterIdAsync(hcId.Value).Result;
+            }
+            else
+            {
+                list = _profileRepository.GetAllInfluencersAsync().Result;
+            }
+
             var influencers = list.Select(l => new MdInfo
             {
                 Id = l.id,
                 Name = l.firstName + " " + l.lastName
             }).ToList();
 
-            // Return success response with the list of influencers
             return Success(influencers);
         }
 
-        public async Task<ResInfo> GetProfileList()
+        //public ResInfo GetInfluencersForLb()
+        //{
+        //    _logger.LogInformation("Getting influencers for LB.");
+
+        //    // Fetch the list of influencers from the ProfileRepository
+        //    var list = _profileRepository.GetAllInfluencersAsync().Result;
+
+        //    // Map the list of ProfileModel to MdInfo
+        //    var influencers = list.Select(l => new MdInfo
+        //    {
+        //        Id = l.id,
+        //        Name = l.firstName + " " + l.lastName
+        //    }).ToList();
+
+        //    // Return success response with the list of influencers
+        //    return Success(influencers);
+        //}
+
+        public async Task<ResInfo> GetProfileListNew()
         {
-            _logger.LogInformation("Getting the list of profiles.");
+            return await GetProfileListNew(-1L, null);
+        }
 
-            // Fetch all profiles from the repository
-            var list = await _profileRepository.GetAllProfilesAsync();
+        public async Task<ResInfo> GetProfileListNew(long? hcmId = null, bool? isInfluencer = null)
+        {
+            _logger.LogInformation("Fetching profile list with filters: hcmId={hcmId}, isInfluencer={isInfluencer}", hcmId, isInfluencer);
 
-            // Map each ProfileModel to ProfileDto
-            var infoList = list.Select(m =>
+            IEnumerable<dynamic> list;
+            if (hcmId.HasValue && hcmId > 0)
             {
-                var info = ProfileMapper.MapToProfileDto(m);
-
-                // Map MasterData (e.g., language, race, occupation, relationship)
-                MapMasterData(m, ref info!);
-
-                // Map influencer relationships
-                var influencers = _dimRepo.FindAllByProfileId(m.id);
-                if (influencers != null && influencers.Any())
+                list = isInfluencer.HasValue && isInfluencer.Value
+                    ? await _profileRepository.GetAllInfluencersByHomeCenterAsync(hcmId.Value)
+                    : new List<dynamic>();
+            }
+            else
+            {
+                list = isInfluencer.HasValue && isInfluencer.Value
+                    ? await _profileRepository.GetAllInfluencersAsync()
+                    : await _profileRepository.GetAllProfilesAsync();
+            }
+            string email = string.Empty;
+            int cnt = 0;
+            var profileList = list.Select(t =>
+            {
+                cnt++;
+                email = t.email;
+                try
                 {
-                    info.influencerIds = influencers.Select(i => i.InfluencerProfile!.id).ToList();
-                }
+                    var profileDto = new ProfileDto
+                    {
+                        email = t.email,
+                        firstName = t.firstName,
+                        lastName = NameUtils.StrVal(t.lastName),
+                        name = NameUtils.Appender(" ", NameUtils.StrVal(t.firstName), NameUtils.StrVal(t.lastName)),
+                        phoneNumber = NameUtils.StrVal(t.phoneNumber),
+                        gender = NameUtils.Gender(NameUtils.StrVal(t.gender)),
+                        dob = DateUtils.ToShortString(NameUtils.DateVal(t.dob)),
+                        isDonor = NullUtils.IsValid(NameUtils.BoolVal(t.isDonor)) ? NameUtils.BoolVal(t.isDonor) : false,
+                        isInfluencer = NullUtils.IsValid(NameUtils.BoolVal(t.isInfluencer)) ? NameUtils.BoolVal(t.isInfluencer) : false,
+                        createdOn = DateUtils.ToShortString(NameUtils.DateVal(t.createdOn)),
+                        schoolAttended = NameUtils.StrVal(t.schoolAttended),
+                        languageId = NameUtils.LongVal(t.languageId),
+                        language = NameUtils.StrVal(t.language),
+                        raceId = NameUtils.LongVal(t.raceId),
+                        race = NameUtils.StrVal(t.race),
+                        relationshipId = NameUtils.LongVal(t.relationshipId),
+                        relationship = NameUtils.StrVal(t.relationship),
+                        occupationId = NameUtils.LongVal(t.occupationId),
+                        occupation = NameUtils.StrVal(t.occupation),
+                        educationId = NameUtils.LongVal(t.educationId),
+                        education = NameUtils.StrVal(t.education),
+                        addressId = NameUtils.LongVal(t.addressId),
+                        addressLine1 = NameUtils.StrVal(t.addressLine1),
+                        city = NameUtils.StrVal(t.city),
+                        state = NameUtils.StrVal(t.state),
+                        stateCode = NameUtils.StrVal(t.stateCode),
+                        country = NameUtils.StrVal(t.country),
+                        countryCode = NameUtils.StrVal(t.countryCode),
+                        latitude = NameUtils.DoubleVal(t.latitude),
+                        longitude = NameUtils.DoubleVal(t.longitude),
+                        fullAddress = NameUtils.StrVal(t.fullAddress),
+                        postalCode = NameUtils.StrVal(t.postalCode),
+                        influencers = NameUtils.StrVal(t.influencers),
+                        infScore = NameUtils.DoubleVal(t.infScore),
+                        hobbieStr = NameUtils.StrVal(t.hobbieStr),
+                        interestStr = NameUtils.StrVal(t.interestStr),
+                        homeCenterId = NameUtils.LongVal(t.homeCenterId),
+                        homeCenter = NameUtils.StrVal(t.homeCenter),
+                        relshipStatus = NameUtils.StrVal(t.relshipStatus),
+                        id = NameUtils.LongVal(t.id)
+                    };
 
-                return info;
+
+
+                    // Convert CSV strings to lists
+                    string infIds = NameUtils.StrVal(t[36]);
+                    string hobbies = NameUtils.StrVal(t[37]);
+                    string interests = NameUtils.StrVal(t[38]);
+
+                    if (NullUtils.IsValid(infIds))
+                    {
+                        profileDto.influencerIds = infIds.Split(',')
+                            .Where(i => !string.IsNullOrWhiteSpace(i))
+                            .Select(i => long.Parse(i.Trim())).ToList();
+                    }
+                    if (NullUtils.IsValid(hobbies))
+                    {
+                        profileDto.hobbiesIds = hobbies.Split(',')
+                            .Where(i => !string.IsNullOrWhiteSpace(i))
+                            .Select(i => long.Parse(i.Trim())).ToList();
+                    }
+                    if (NullUtils.IsValid(interests))
+                    {
+                        profileDto.interestIds = interests.Split(',')
+                            .Where(i => !string.IsNullOrWhiteSpace(i))
+                            .Select(i => long.Parse(i.Trim())).ToList();
+                    }
+
+                    return profileDto;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation("Error Occurred for " + email + " at " + cnt);
+                    
+                }
+                return null;
             }).ToList();
 
-            return Success(infoList); // Return the successful response
+            return Success(profileList);
         }
+        //public async Task<ResInfo> GetProfileListNew()
+        //{
+        //    _logger.LogInformation("Getting the list of profiles.");
+
+        //    // Fetch all profiles from the repository
+        //    var list = await _profileRepository.GetAllProfilesAsync();
+
+        //    // Map each ProfileModel to ProfileDto
+        //    var infoList = list.Select(m =>
+        //    {
+        //        var info = ProfileMapper.MapToProfileDto(m);
+
+        //        // Map MasterData (e.g., language, race, occupation, relationship)
+        //        MapMasterData(m, ref info!);
+
+        //        // Map influencer relationships
+        //        var influencers = _dimRepo.FindAllByProfileId(m.id);
+        //        if (influencers != null && influencers.Any())
+        //        {
+        //            info.influencerIds = influencers.Select(i => i.InfluencerProfile!.id).ToList();
+        //        }
+
+        //        return info;
+        //    }).ToList();
+
+        //    return Success(infoList); // Return the successful response
+        //}
 
         public string UpdateProfile(ProfileModel updatedModel, long id)
         {
@@ -260,100 +498,7 @@ namespace NewPlasmaDonorsAPI.Services
             return new OkObjectResult(response); // Fix: Use OkObjectResult instead of Ok
         }
 
-        public ResInfo SearchProfiles(ProfileDto profileReq)
-        {
-            if (profileReq == null)
-            {
-                profileReq = new ProfileDto();
-            }
 
-            var query = @"
-            SELECT a.email, a.first_name, a.last_name, a.phone_number, a.gender, a.dob,   
-                   a.is_donor, a.is_influencer, a.created_on, a.school_attended,  
-                   lang.id, lang.md_title,  
-                   race.id, race.md_title,  
-                   relationship.id, relationship.md_title,  
-                   occupation.id, occupation.md_title,  
-                   education.id, education.md_title,  
-                   addr.id, addr.address_line, addr.city, addr.state, addr.state_code,  
-                   addr.country, addr.country_code, addr.latitude, addr.longitude,   
-                   addr.full_address, addr.postal_code,  
-                   STRING_AGG(DISTINCT influencer.email, ',') AS influencedByList,  
-                   STRING_AGG(DISTINCT donors.email, ',') AS donorList,  
-                   SUM(infRelationship.md_score) AS infScore,  
-                   STRING_AGG(DISTINCT hobbies.md_title, ',') AS hobbiesList,  
-                   STRING_AGG(DISTINCT interest.md_title, ',') AS interestList,  
-                   STRING_AGG(DISTINCT influencer.id, ',') AS influencedByIds,  
-                   STRING_AGG(DISTINCT hobbies.id, ',') AS hobbieIds,  
-                   STRING_AGG(DISTINCT interest.id, ',') AS interestIds,  
-                   companyLocation.id, companyLocation.site_id,  
-                   a.relship_status, a.id  
-            FROM profiles a  
-            LEFT JOIN master_data lang ON a.language_id = lang.id  
-            LEFT JOIN master_data race ON a.race_id = race.id  
-            LEFT JOIN master_data relationship ON a.relationship_id = relationship.id  
-            LEFT JOIN master_data occupation ON a.occupation_id = occupation.id  
-            LEFT JOIN master_data education ON a.education_id = education.id  
-            LEFT JOIN company_locations companyLocation ON a.home_center_id = companyLocation.id  
-            LEFT JOIN address addr ON a.address_id = addr.id  
-            LEFT JOIN donar_influencer_map influencerMap ON a.id = influencerMap.profile_id  
-            LEFT JOIN profiles influencer ON influencerMap.influenced_by = influencer.id  
-            LEFT JOIN master_data infRelationship ON influencer.relationship_id = infRelationship.id  
-            LEFT JOIN donar_influencer_map donorMap ON donorMap.influenced_by = a.id  
-            LEFT JOIN profiles donors ON donors.id = donorMap.profile_id  
-            LEFT JOIN profile_md_map hobbiesMap ON a.id = hobbiesMap.profile_id  
-            LEFT JOIN master_data hobbies ON hobbiesMap.md_id = hobbies.id AND hobbies.md_type = 'hobbies'  
-            LEFT JOIN profile_md_map interestMap ON a.id = interestMap.profile_id  
-            LEFT JOIN master_data interest ON interestMap.md_id = interest.id AND interest.md_type = 'interests'  
-            WHERE a.id IS NOT NULL ";
-
-            var sb = new StringBuilder(query);
-
-            // **Filtering Conditions**
-            if (profileReq.isDonor.HasValue && profileReq.isDonor.Value)
-            {
-                sb.Append(" AND a.is_donor = 1 ");
-            }
-
-            if (profileReq.isInfluencer.HasValue && profileReq.isInfluencer.Value)
-            {
-                sb.Append(" AND a.is_influencer = 1 ");
-            }
-
-            if (profileReq.homeCenterId > 0)
-            {
-                sb.Append($" AND a.home_center_id = {profileReq.homeCenterId}");
-            }
-            if (profileReq.influencedById > 0)
-            {
-                sb.Append($" AND influencer.id = {profileReq.influencedById}");
-            }
-
-            if (profileReq.relationshipId.HasValue)
-            {
-                sb.Append($" AND a.relationship_id = {profileReq.relationshipId.Value}");
-            }
-
-            if (!string.IsNullOrEmpty(profileReq.gender))
-            {
-                sb.Append($" AND a.gender = '{profileReq.gender}'");
-            }
-
-            if (profileReq.ageGroup > 0)
-            {
-                var sqlUtilService = new SqlUtilService();
-                sb.Append($" AND {sqlUtilService.AgeGroupQuery(profileReq.ageGroup)}");
-            }
-
-            // **Executing the Query**
-            var results = _context.Database.SqlQuery<ProfileDto>($"{sb.ToString()}").ToList();
-
-            return new ResInfo
-            {
-                Status = true,
-                Data = results
-            };
-        }
 
     }
 }

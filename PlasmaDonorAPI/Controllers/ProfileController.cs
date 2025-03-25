@@ -62,10 +62,10 @@ namespace NewPlasmaDonorsAPI.Controllers
             return BadRequest(res); // Return error response
         }
 
-        [HttpGet("influencer/get-all-for-lb")]
-        public IActionResult GetAllInfluencersForListBox()
+        [HttpGet("get-all-for-lb")]
+        public IActionResult GetAllInfluencersForListBox([FromQuery] int? hc)
         {
-            var res = _profileService.GetInfluencersForLb();
+            var res = _profileService.GetInfluencersForLb(hc);
             if (res.Status)
             {
                 return Ok(res); // Return success response
@@ -74,11 +74,23 @@ namespace NewPlasmaDonorsAPI.Controllers
             return BadRequest(res); // Return error response
         }
 
+        //[HttpGet("influencer/get-all-for-lb")]
+        //public IActionResult GetAllInfluencersForListBox()
+        //{
+        //    var res = _profileService.GetInfluencersForLb();
+        //    if (res.Status)
+        //    {
+        //        return Ok(res); // Return success response
+        //    }
+
+        //    return BadRequest(res); // Return error response
+        //}
+
         [HttpGet("get-all")]
         public async Task<IActionResult> GetProfileList()
         {
-            var result = await _profileService.GetProfileList(); // Call to ProfileService method
-            if (result.Status)
+            var result = await _profileService.GetProfileListNew(); // Call to ProfileService method
+            if (result!=null)
             {
                 return Ok(result); // Return successful response
             }
