@@ -110,7 +110,7 @@ namespace NewPlasmaDonorsAPI.utils
 			return null;
 		}
 
-		public static double? DoubleVal(object obj)
+		public static double? DoubleVal(object? obj)
 		{
 			if (obj == null)
 			{

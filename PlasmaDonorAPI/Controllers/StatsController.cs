@@ -28,7 +28,7 @@ namespace NewPlasmaDonorsAPI.Controllers
 
        
         [HttpGet("dashboard")]
-        public async Task<IActionResult> GetDashboardStats()
+        public async Task<ActionResult<ResInfo>> GetDashboardStats()
         {
             var result = await _statService.GetDashboardStatsAsync(); // ✅ Await the async method
             return Ok(result);

@@ -16,6 +16,7 @@ using NewPlasmaDonorsAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using NewPlasmaDonorsAPI.Models;
 using Log = Serilog.Log;
+using PlasmaDonorAPI.Dto;
 
 namespace NewPlasmaDonorsAPI.Services
 {
@@ -52,121 +53,64 @@ namespace NewPlasmaDonorsAPI.Services
 
         public async Task<ResInfo> GetDashboardStatsAsync()
         {
-            // Get donor count
             int donorCount = await _statRepo.GetDonorCountAsync();
-
-            // Get influencer count
             int infCount = await _statRepo.GetInfluencerCountAsync();
-
             DateTime date30DaysAgo = DateTime.Now.AddDays(-30);
-
-            // Get recent influencer count
             int recentInfCount = await _statRepo.GetRecentInfluencerCountAsync(date30DaysAgo);
-            Log.Information(":: Inf Count::" + infCount);
-
             int recentDonorCount = await _statRepo.GetRecentDonorCountAsync(date30DaysAgo);
-            Log.Information(":: donor Count::" + donorCount);
 
             var dbsInfo = new DashboardStatInfo
             {
                 topCards = new List<KpiInfo>
-                {
-                    new KpiInfo { bgColor = "success", icon = "bi bi-wallet", title = "Donors", valStr = donorCount.ToString() },
-                    new KpiInfo { bgColor = "danger", icon = "bi bi-brightness-high", title = "Influencers", valStr = infCount.ToString() },
-                    new KpiInfo { bgColor = "warning", icon = "bi bi-book-half", title = "New Donors", valStr = recentDonorCount.ToString() },
-                    new KpiInfo { bgColor = "info", icon = "bi bi-box-fill", title = "New Influencers", valStr = recentInfCount.ToString() }
-                }
+        {
+            new KpiInfo { title = "Donors", valStr = donorCount.ToString(), bgColor = "success", icon = "bi bi-wallet" },
+            new KpiInfo { title = "Influencers", valStr = infCount.ToString(), bgColor = "danger", icon = "bi bi-brightness-high" },
+            new KpiInfo { title = "New Donors", valStr = recentDonorCount.ToString(), bgColor = "warning", icon = "bi bi-book-half" },
+            new KpiInfo { title = "New Influencers", valStr = recentInfCount.ToString(), bgColor = "info", icon = "bi bi-box-fill" }
+        }
             };
-           
-            List<Tuple<string, int>> lst = _statRepo.GetInfTimeSeries(DateTime.Now);
-            // Convert first dataset and set to InfSeries
-            dbsInfo.infSeries = ToKpiInfo(lst);
 
-            // Get influencer's time series by date
-            lst = _statRepo.GetDonorTimeSeries(DateTime.Now);
-            dbsInfo.donorSeries = ToKpiInfo(lst);
+            dbsInfo.infSeries = ToKpiInfo(_statRepo.GetInfTimeSeries(DateTime.Now));
+            dbsInfo.donorSeries = ToKpiInfo(_statRepo.GetDonorTimeSeries(DateTime.Now));
+            dbsInfo.pfsByStates = ToKpiInfoByLookup(_statRepo.GetProfilesByState());
+            dbsInfo.pfsByOccupation = ToKpiInfo(_statRepo.GetDonorsByOccupation());
 
-            // Get profiles by state
-            var profilesByState = _statRepo.GetProfilesByState();
-            dbsInfo.pfsByStates = ToKpiInfoByLookup(profilesByState);
-
-            // Get donors by occupation
-            var donorsByOccupation = _statRepo.GetDonorsByOccupation();
-            dbsInfo.pfsByOccupation = ToKpiInfo(donorsByOccupation);
-            //dbsInfo.pfsByOccupation = ToKpiInfoByLookup(lst);
-
-           
-
-          //PENDING BELOW METHOD
-            //List<TopInfluencerInfo> topInfs = await _statRepo.GetTopInfluencersAsync();
-
-            //var config = new MapperConfiguration(cfg =>
-            //{
-            //    cfg.CreateMap<TopInfluencerInfo, TopInfluencersinfo>();
-            //});
-            //var mapper = config.CreateMapper();
-            //// dbsInfo.topInfluencers = mapper.Map<List<TopInfluencersinfo>>(topInfs);
-            //dbsInfo.topInfluencers = topInfs
-            // .Select(t => new TopInfluencerInfo
-            // {
-            //     Name = t.Item1,   // Name from Tuple<string, double>
-            //     Count = t.Item2,  // Count from Tuple<string, double>
-            //     Email = "",       // Default value (update if needed)
-            //     Location = "",    // Default value (update if needed)
-            //     Icn = "",         // Default value (update if needed)
-            //     CssCls = "success"
-            // })
-            // .ToList();
-
-            //dbsInfo.topInfluencers = topInfs.Select(t =>
-            //{
-            //    // Ensure name is properly split
-            //    string firstName = t.Name?.Split(' ').FirstOrDefault() ?? "";
-            //    string lastName = t.Name?.Split(' ').Skip(1).FirstOrDefault() ?? "";
-
-            //    // Extract initials (icnTxt)
-            //    string iconTxt = lastName.Length >= 2 ? lastName.Substring(0, 2) : "??";
-            //    if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
-            //    {
-            //        iconTxt = $"{firstName[0]}{lastName[0]}";
-            //    }
-
-            //    return new TopInfluencerInfo
-            //    {
-            //        Name = $"{firstName} {lastName}".Trim(),
-            //        Email = t.Email,
-            //        //Location = $"{t.AddressLine}, {t.City}, {t.State}".Trim(),
-            //        Location = $"{t.Location}".Trim(),
-            //        Count = t.Count,
-            //        Icn = iconTxt.ToUpper(),
-            //        CssCls = "success"
-            //    };
-            //}).ToList();
-
-
-            var statsDto = new NewPlasmaDonorsAPI.Dto.DashboardStatsDto
+            var topInfs =  _statRepo.GetTopInfluencers();
+            dbsInfo.topInfluencers = topInfs.Select(t =>
             {
-                DonorCount = donorCount,
-                InfluencerCount = infCount,
-                RecentInfluencerCount = recentInfCount,
-                RecentDonorCount = recentDonorCount,
-                DonorTimeSeries = lst,
-                InfluencerTimeSeries = lst,
-                ProfileByState = lst,
-                DonorByOccupation = lst,
-                //TopInfluencers = topInfs.Select(t => new Tuple<string, double>(t.Name, t.Count)).ToList()
+                string firstName = t.FirstName?.ToString() ?? "";
+                string lastName = t.LastName?.ToString() ?? "";
+                string icnTxt = lastName.Length >= 2 ? lastName.Substring(0, 2) : lastName;
 
-            };
+                if (!string.IsNullOrEmpty(firstName))
+                {
+                    icnTxt = firstName.Substring(0, 1) + (lastName.Length > 0 ? lastName.Substring(0, 1) : "");
+                }
+
+                return new TopInfluencerDto
+                {
+                    name = NameUtils.Appender(" ", firstName, lastName),
+                    email = t.Email?.ToString() ?? "",
+                    location = NameUtils.Appender(", ",
+                        t.AddressLine?.ToString() ?? "",
+                        t.City?.ToString() ?? "",
+                        t.State?.ToString() ?? ""),
+                    count = (double)NameUtils.DoubleVal(t.InfScore),
+                    icn = icnTxt.ToUpper(),
+                    cssCls = "success"
+                };
+
+            }).ToList();
+
 
             return new ResInfo
             {
                 Status = true,
-                Data = statsDto,
-                Msg = "Dashboard stats retrieved successfully",
-                Desc = null
+                Data = dbsInfo,
+                Msg = "Success"
             };
         }
-      
+
         public List<KpiInfo> ToKpiInfo(List<Tuple<string, int>> lst)
         {
             var cal = DateTime.UtcNow.AddDays(-30);
@@ -199,12 +143,23 @@ namespace NewPlasmaDonorsAPI.Services
         }
 
 
-        public List<KpiInfo> ToKpiInfoByLookup(List<CountDto> profilesByState)
+        public List<KpiInfo> ToKpiInfoByLookup(List<Tuple<string, int>> lst)
         {
-            return profilesByState.Select(p => new KpiInfo
+            return lst.Select(d =>
             {
-                value = p.Count,
-                title = p.State
+                string val = d.Item2.ToString();
+                string title = d.Item1;
+
+                if (string.IsNullOrEmpty(title))
+                {
+                    title = "Not Specified";
+                }
+
+                return new KpiInfo
+                {
+                    valStr = val,
+                    title = title
+                };
             }).ToList();
         }
 
@@ -474,7 +429,7 @@ namespace NewPlasmaDonorsAPI.Services
         public ResInfo InfStatsData(int? hmcId)
         {
             var dbsInfo = new DashboardStatInfo();
-            List<CountDto> lst ;
+            List<Tuple<string,int>> lst ;
 
             if (hmcId.HasValue && hmcId < 0)
             {

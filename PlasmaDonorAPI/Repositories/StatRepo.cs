@@ -7,6 +7,7 @@ using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Dto.Dashboard;
 using Microsoft.Data.SqlClient;
 using StructureMap;
+using PlasmaDonorAPI.Dto;
 public class StatRepo : IStatRepo
 {
     private readonly AppDbContext _context;
@@ -80,19 +81,23 @@ public class StatRepo : IStatRepo
         return query.Select(x => new Tuple<string, int>(x.Title, x.Cont)).ToList();
     }
 
-   
 
-    public List<CountDto> GetProfilesByState()
-    {
-        string query = @"
-        SELECT COUNT(a.id) AS Count, adr.state AS State   
-        FROM profiles a 
-        LEFT JOIN address adr ON a.address_id = adr.id 
-        WHERE a.is_influencer = 1  
-        GROUP BY adr.state    
-        ORDER BY Count DESC;";
-        return _context.Database.SqlQueryRaw<CountDto>(query).ToList();
-    }
+
+    //public List<Tuple<string, int>> GetProfilesByState()
+    //{
+    //    string query = @"
+    //    SELECT COUNT(a.id) AS Count, adr.state AS State   
+    //    FROM profiles a 
+    //    LEFT JOIN address adr ON a.address_id = adr.id 
+    //    WHERE a.is_influencer = 1  
+    //    GROUP BY adr.state    
+    //    ORDER BY Count DESC;";
+    //    // return _context.Database.SqlQueryRaw<CountDto>(query).ToList();
+    //    var result = _context.Database.SqlQueryRaw<CountDto>(query).ToList();
+
+    //    // Convert List<CountDto> to List<Tuple<string, int>>
+    //    return result.Select(r => Tuple.Create(r.State, r.Count)).ToList();
+    //}
 
 
     public List<Tuple<string, int>> GetInfTimeSeries(DateTime date)
@@ -115,28 +120,28 @@ public class StatRepo : IStatRepo
         return query.Select(x => new Tuple<string, int>(x.Title ?? string.Empty, x.Cont)).ToList();
     }
 
-    //public List<Tuple<string, int>> GetProfilesByState()
-    //{
-    //    if (_context.ProfileByStateResults == null)
-    //    {
-    //        throw new InvalidOperationException("ProfileByStateResults DbSet is null.");
-    //    }
+    public List<Tuple<string, int>> GetProfilesByState()
+    {
+        if (_context.ProfileByStateResults == null)
+        {
+            throw new InvalidOperationException("ProfileByStateResults DbSet is null.");
+        }
 
-    //    var query = _context.ProfileByStateResults
-    //        .FromSqlRaw(
-    //            "SELECT COUNT(a.id) AS Cnt, COALESCE(adr.state, '') AS Str " +
-    //            "FROM profiles a " +
-    //            "LEFT JOIN address adr ON a.address_id = adr.id " +
-    //            "WHERE a.is_influencer = 1 " +  // TRUE -> 1 in SQL
-    //            "GROUP BY adr.state " +
-    //            "ORDER BY Cnt DESC"
-    //        )
-    //        .ToList();
+        var query = _context.ProfileByStateResults
+            .FromSqlRaw(
+                "SELECT COUNT(a.id) AS Cnt, COALESCE(adr.state, '') AS Str " +
+                "FROM profiles a " +
+                "LEFT JOIN address adr ON a.address_id = adr.id " +
+                "WHERE a.is_influencer = 1 " +  // TRUE -> 1 in SQL
+                "GROUP BY adr.state " +
+                "ORDER BY Cnt DESC"
+            )
+            .ToList();
 
-    //    return query.Select(x => new Tuple<string, int>(x.Str, x.Cnt)).ToList();
-    //}
+        return query.Select(x => new Tuple<string, int>(x.Str, x.Cnt)).ToList();
+    }
 
-    public List<CountDto> GetProfilesByStateByHomeCenter(int hmcId)
+    public List<Tuple<string,int>> GetProfilesByStateByHomeCenter(int hmcId)
     {
         string query = "SELECT COUNT(a.id) AS cnt, adr.state AS str " +
                        "FROM profiles a " +
@@ -146,8 +151,15 @@ public class StatRepo : IStatRepo
                        "GROUP BY adr.state " +
                        "ORDER BY cnt DESC;";
 
-        return _context.Database.SqlQueryRaw<CountDto>(query, new SqlParameter("@hmcId", hmcId))
-                     .ToList();
+
+        var result = _context.DonorByOccupationResults
+         .FromSqlRaw(query, new SqlParameter("@hmcId", hmcId))
+         .ToList();
+
+        return result.Select(r => new Tuple<string, int>(
+            r.MdTitle ?? "Not Specified",  // Extract md_title
+            r.Cnt                          // Extract count
+        )).ToList();
     }
 
     public List<Tuple<string, int>> GetDonorsByOccupation()
@@ -167,13 +179,13 @@ public class StatRepo : IStatRepo
                 "ORDER BY Cnt DESC " +
                 "LIMIT 20"
             )
-                        .Select(x => new DonorByOccupationResults { MdTitle = x.MdTitle, Cnt = x.Cnt }) // Map to DTO
-                        .ToList();
+                .Select(x => new DonorByOccupationResults { MdTitle = x.MdTitle, Cnt = x.Cnt }) // Map to DTO
+                .ToList();
 
         return query.Select(x => new Tuple<string, int>(x.MdTitle ?? string.Empty, x.Cnt)).ToList();
     }
 
-    public List<CountDto> GetInfuencersByOccupationByHomeCenter(int hmcId)
+    public List<Tuple<string,int>> GetInfuencersByOccupationByHomeCenter(int hmcId)
     {
         string query = @"SELECT COUNT(a.id) AS cnt, b.md_title 
                      FROM profiles a  
@@ -183,11 +195,17 @@ public class StatRepo : IStatRepo
                      ORDER BY cnt DESC   
                      LIMIT 8;";
 
-        return _context.Database
-            .SqlQueryRaw<CountDto>(query, new SqlParameter("@hmcId", hmcId)).ToList();
+        var result = _context.DonorByOccupationResults
+         .FromSqlRaw(query, new SqlParameter("@hmcId", hmcId))
+         .ToList();
+
+        return result.Select(r => new Tuple<string, int>(
+            r.MdTitle ?? "Not Specified",  // Extract md_title
+            r.Cnt                          // Extract count
+        )).ToList();
     }
 
-    public List<CountDto> GetInfluencersByRelByHomeCenter(int hmcId)
+    public List<Tuple<string, int>> GetInfluencersByRelByHomeCenter(int hmcId)
     {
         string query = @"
         SELECT COUNT(a.id) AS cnt, b.md_title 
@@ -198,12 +216,18 @@ public class StatRepo : IStatRepo
         ORDER BY cnt DESC   
         LIMIT 20;";
 
-        return _context.Database
-            .SqlQueryRaw< CountDto> (query, new SqlParameter("@hmcId", hmcId)).ToList();
-           
+        var result = _context.DonorByOccupationResults
+          .FromSqlRaw(query, new SqlParameter("@hmcId", hmcId))
+          .ToList();
+
+        return result.Select(r => new Tuple<string, int>(
+            r.MdTitle ?? "Not Specified",  // Extract md_title
+            r.Cnt                          // Extract count
+        )).ToList();
+
     }
 
-    public List<CountDto> GetInfluencersByEduByHomeCenter(int hmcId)
+    public List<Tuple<string,int>> GetInfluencersByEduByHomeCenter(int hmcId)
     {
         string query = @"
         SELECT COUNT(a.id) AS cnt, b.md_title     
@@ -214,51 +238,92 @@ public class StatRepo : IStatRepo
         ORDER BY cnt DESC   
         LIMIT 20;";
 
-        return _context.Database.SqlQueryRaw<CountDto>(query, new SqlParameter("@hmcId", hmcId)).ToList();
+        var result = _context.DonorByOccupationResults
+          .FromSqlRaw(query, new SqlParameter("@hmcId", hmcId))
+          .ToList();
+
+        return result.Select(r => new Tuple<string, int>(
+            r.MdTitle ?? "Not Specified",  // Extract md_title
+            r.Cnt                          // Extract count
+        )).ToList();
     }
 
-    public List<CountDto> GetInfuencersByOccupation()
+    public List<Tuple<string,int>> GetInfuencersByOccupation()
+    {
+
+        var query = _context.ProfileByStateResults
+         .FromSqlRaw(
+        "SELECT COUNT(a.id) AS cnt, b.md_title" +
+        "FROM profiles a" +
+        "LEFT JOIN master_data b ON a.occupation_id = b.id" +
+        "WHERE a.is_influencer = 1" +
+        "GROUP BY b.md_title" +
+        "ORDER BY cnt DESC" +
+        "LIMIT 20"
+        )
+         .ToList();
+
+        return query.Select(x => new Tuple<string, int>(x.Str, x.Cnt)).ToList();
+    }
+
+    public List<Tuple<string, int>> GetInfuencersByRel()
+    {
+        var query = _context.ProfileByStateResults
+         .FromSqlRaw(
+        "SELECT COUNT(a.id) AS cnt, b.md_title" +
+        "FROM profiles a " +
+        "LEFT JOIN master_data b ON a.relationship_id = b.id " +
+        "WHERE a.is_influencer = 1 " +
+        "GROUP BY b.md_title" +
+        "ORDER BY cnt DESC" +
+        "LIMIT 20"
+        )
+         .ToList();
+
+        return query.Select(x => new Tuple<string, int>(x.Str, x.Cnt)).ToList();
+    }
+
+    public List<Tuple<string, int>> GetInfuencersByEdu()
+    {
+        var query = _context.ProfileByStateResults
+         .FromSqlRaw(
+        "SELECT COUNT(a.id) AS cnt, b.md_title" +
+        "FROM profiles a" +
+        "LEFT JOIN master_data b ON a.education_id = b.id" +
+        "WHERE a.is_influencer = 1" +
+        "GROUP BY b.md_title" +
+        "ORDER BY cnt DESC" +
+        "LIMIT 20"
+        ).ToList();
+
+        return query.Select(x => new Tuple<string, int>(x.Str, x.Cnt)).ToList();
+    }
+
+    public List<TopInfluencerInfo> GetTopInfluencers()
     {
         string query = @"
-        SELECT COUNT(a.id) AS cnt, b.md_title     
-        FROM profiles a  
-        LEFT JOIN master_data b ON a.occupation_id = b.id  
-        WHERE a.is_influencer = 1  
-        GROUP BY b.md_title  
-        ORDER BY cnt DESC   
-        LIMIT 20;";
+            SELECT 
+                b.first_name AS FirstName, 
+                b.last_name AS LastName, 
+                b.email AS Email,  
+                e.address_line AS AddressLine, 
+                e.city AS City, 
+                e.state AS State, 
+                e.country AS Country,  
+                SUM(d.md_score) AS InfScore 
+            FROM donar_influencer_map a  
+            LEFT JOIN profiles b ON b.id = a.influenced_by  
+            LEFT JOIN profiles c ON c.id = a.profile_id  
+            LEFT JOIN master_data d ON c.relationship_id = d.id  
+            LEFT JOIN address e ON b.address_id = e.id  
+            GROUP BY a.influenced_by  
+            ORDER BY InfScore DESC  
+            LIMIT 20";
 
-        return _context.Database.SqlQueryRaw<CountDto>(query).ToList();
+        return _context.TopInfluencersinfo
+            .FromSqlRaw(query)
+            .ToList();
     }
-
-    public List<CountDto> GetInfuencersByRel()
-    {
-        string query = @"
-        SELECT COUNT(a.id) AS cnt, b.md_title     
-        FROM profiles a  
-        LEFT JOIN master_data b ON a.relationship_id = b.id  
-        WHERE a.is_influencer = 1  
-        GROUP BY b.md_title  
-        ORDER BY cnt DESC   
-        LIMIT 20;";
-
-        return _context.Database.SqlQueryRaw<CountDto>(query).ToList();
-    }
-
-    public List<CountDto> GetInfuencersByEdu()
-    {
-        string query = @"
-        SELECT COUNT(a.id) AS cnt, b.md_title     
-        FROM profiles a  
-        LEFT JOIN master_data b ON a.education_id = b.id  
-        WHERE a.is_influencer = 1  
-        GROUP BY b.md_title  
-        ORDER BY cnt DESC   
-        LIMIT 20;";
-
-        return _context.Database.SqlQueryRaw<CountDto>(query).ToList();
-    }
-
     //public async Task<List<Tuple<string, string, string, string, string, string, double>>> GetTopInfluencersAsync()
     //{
     //    string sqlQuery = @"

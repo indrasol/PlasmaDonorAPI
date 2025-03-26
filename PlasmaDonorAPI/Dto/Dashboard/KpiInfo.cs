@@ -1,5 +1,6 @@
 ﻿namespace NewPlasmaDonorsAPI.Dto.Dashboard
 {
+    [Serializable]
     public class KpiInfo
     {
         public string? title { get; set; }
