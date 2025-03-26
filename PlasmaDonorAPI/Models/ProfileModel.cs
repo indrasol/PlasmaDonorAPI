@@ -40,21 +40,21 @@ namespace NewPlasmaDonorsAPI.Models
 
         public DateTime? updatedOn { get; set; }
 
-        public long? address { get; set; }
+        public long? address_id { get; set; }
 
         public long? createdBy { get; set; }
 
-        public long? education { get; set; }
+        public long? education_id { get; set; }
 
-        public long? language { get; set; }
+        public long? language_id { get; set; }
 
-        public long? occupation { get; set; }
+        public long? occupation_id { get; set; }
 
-        public long? race { get; set; }
+        public long? race_id { get; set; }
 
-        public long? relationship{ get; set; }
+        public long? relationship_id{ get; set; }
 
-        public long? relshipReason { get; set; }
+        public long? relship_reason_id { get; set; }
 
         public long? updatedBy { get; set; }
 
