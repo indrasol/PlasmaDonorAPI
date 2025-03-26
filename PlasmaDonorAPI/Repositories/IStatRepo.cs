@@ -2,7 +2,8 @@
 using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Dto.Dashboard;
 using NewPlasmaDonorsAPI.Models;
-using NewPlasmaDonorsAPI.Dto; // Ensure the TopInfluencersinfo class is in this namespace
+using NewPlasmaDonorsAPI.Dto;
+using PlasmaDonorAPI.Dto; // Ensure the TopInfluencersinfo class is in this namespace
 
 
 namespace NewPlasmaDonorsAPI.Repositories
@@ -23,15 +24,15 @@ namespace NewPlasmaDonorsAPI.Repositories
         List<ProfileDto> GetDonorInfDataAsync();
         Task<List<Tuple<long, long?, string, string, string, string>>> GetDonorInfDataByInfIdAsync(List<int> infIds);
         Task<List<Tuple<long?, int>>> GetScoreByInfIdsAsync(List<long> profileIds);
-        List<CountDto> GetProfilesByStateByHomeCenter(int hmcId);
-        List<CountDto> GetInfuencersByOccupationByHomeCenter(int hmcId);
-
-        List<CountDto> GetInfluencersByRelByHomeCenter(int hmcId);
-        List<CountDto> GetInfluencersByEduByHomeCenter(int hmcId);
-        List<CountDto> GetProfilesByState();
-        List<CountDto> GetInfuencersByOccupation();
-        List<CountDto> GetInfuencersByRel();
-        List<CountDto> GetInfuencersByEdu();
+        List<Tuple<string,int>> GetProfilesByStateByHomeCenter(int hmcId);
+        List<Tuple<string,int>> GetInfuencersByOccupationByHomeCenter(int hmcId);
+        List<TopInfluencerInfo> GetTopInfluencers();
+        List<Tuple<string, int>> GetInfluencersByRelByHomeCenter(int hmcId);
+        List<Tuple<string, int>> GetInfluencersByEduByHomeCenter(int hmcId);
+        List<Tuple<string,int>> GetProfilesByState();
+        List<Tuple<string, int>> GetInfuencersByOccupation();
+        List<Tuple<string, int>> GetInfuencersByRel();
+        List<Tuple<string, int>> GetInfuencersByEdu();
 
 
     }

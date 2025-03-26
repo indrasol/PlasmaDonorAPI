@@ -21,7 +21,7 @@ namespace NewPlasmaDonorsAPI.Data
         public DbSet<InfluencerTimeSeriesResult>? InfluencerTimeSeriesResults { get; set; }
         public DbSet<ProfileByStateResult>? ProfileByStateResults { get; set; }
         public DbSet<DonorByOccupationResults>? DonorByOccupationResults { get; set; }
-        public DbSet<TopInfluencersinfo>? TopInfluencersinfo { get; set; }
+        public DbSet<TopInfluencerInfo>? TopInfluencersinfo { get; set; }
         public DbSet<CountDto> countDto { get; set; }
 
 
@@ -370,7 +370,7 @@ namespace NewPlasmaDonorsAPI.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<TopInfluencersinfo>()
+            modelBuilder.Entity<TopInfluencerInfo>()
             .HasNoKey() // No primary key since it's a raw SQL result
             .ToView(null); // Ensures EF Core doesn’t treat it as a table
 
