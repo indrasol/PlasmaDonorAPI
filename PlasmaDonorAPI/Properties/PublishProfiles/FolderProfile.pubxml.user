@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
+<Project>
+  <PropertyGroup>
+    <TimeStampOfAssociatedLegacyPublishXmlFile />
+    <_PublishTargetUrl>C:\Users\Indrasol\Deployments\API\PlasmaDonorAPI</_PublishTargetUrl>
+    <History>True|2025-03-28T15:37:40.8847434Z||;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+  <ItemGroup>
+    <DestinationConnectionStrings Include="DefaultConnection">
+      <Value>Server=192.168.2.142%3bPort=3306%3bDatabase=nuramadpc%3bUser=root%3bPassword=Hyderabad!1234%3bConnect Timeout=60%3b</Value>
+    </DestinationConnectionStrings>
+  </ItemGroup>
+  <ItemGroup>
+    <EFMigrations Include="NewPlasmaDonorsAPI.Data.AppDbContext">
+      <Value>Server=192.168.2.142%3bPort=3306%3bDatabase=nuramadpc%3bUser=root%3bPassword=Hyderabad!1234%3bConnect Timeout=60%3b</Value>
+    </EFMigrations>
+  </ItemGroup>
+</Project>

@@ -94,6 +94,12 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Add IIS integration
+builder.Services.Configure<IISOptions>(options =>
+{
+    options.AutomaticAuthentication = false;
+});
+
 // Build the application
 var app = builder.Build();
 
@@ -112,19 +118,22 @@ var app = builder.Build();
 //    await next.Invoke(); // Call the next middleware for other requests
 //});
 
-
+// Add Routing explicitly
+app.UseRouting();
 
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 //app.UseCors(MyAllowSpecificOrigins);
 
+
+
 // Enable authentication and authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+//if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
@@ -133,6 +142,12 @@ if (app.Environment.IsDevelopment())
     });
 
 }
+
+//// Ensure endpoints are mapped correctly
+//app.UseEndpoints(endpoints =>
+//{
+//    endpoints.MapControllers();
+//});
 
 // Map controllers
 app.MapControllers();
