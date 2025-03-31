@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.StaticFiles;
 using NewPlasmaDonorsAPI.Services;
 using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Models;
 using NewPlasmaDonorsAPI.Services;
+using EnvDTE;
 
 namespace NewPlasmaDonorsAPI.Controllers
 {
@@ -20,13 +22,13 @@ namespace NewPlasmaDonorsAPI.Controllers
         private readonly ProfileService _profileService;
         private readonly MdService _mdService;
         private readonly ProfileImportService profileImportService;
-        private const string CLASSPATH_URL_PREFIX = "classpath:";
-
-        public ProfileController(ProfileService profileService, MdService mdService,ProfileImportService profileImportService, ProfileImportService ProfileImportService)
+        private readonly IWebHostEnvironment _env;
+        public ProfileController(ProfileService profileService, MdService mdService,ProfileImportService profileImportService, ProfileImportService ProfileImportService, IWebHostEnvironment env)
         {
             _profileService = profileService;
             _mdService = mdService;
             ProfileImportService=profileImportService;
+            _env = env;
         }
         [HttpPost("create")]
         public IActionResult AddProfile([FromBody] ProfileDto profileDto)
@@ -62,7 +64,7 @@ namespace NewPlasmaDonorsAPI.Controllers
             return BadRequest(res); // Return error response
         }
 
-        [HttpGet("get-all-for-lb")]
+        [HttpGet("influencer/get-all-for-lb")]
         public IActionResult GetAllInfluencersForListBox([FromQuery] int? hc)
         {
             var res = _profileService.GetInfluencersForLb(hc);
@@ -73,18 +75,6 @@ namespace NewPlasmaDonorsAPI.Controllers
 
             return BadRequest(res); // Return error response
         }
-
-        //[HttpGet("influencer/get-all-for-lb")]
-        //public IActionResult GetAllInfluencersForListBox()
-        //{
-        //    var res = _profileService.GetInfluencersForLb();
-        //    if (res.Status)
-        //    {
-        //        return Ok(res); // Return success response
-        //    }
-
-        //    return BadRequest(res); // Return error response
-        //}
 
         [HttpGet("get-all")]
         public async Task<IActionResult> GetProfileList()
@@ -130,49 +120,7 @@ namespace NewPlasmaDonorsAPI.Controllers
             return Ok(result);
         }
         // 📌 Private method inside ProfileController
-        private static FileInfo GetFile(string resourceLocation)
-        {
-            if (string.IsNullOrEmpty(resourceLocation))
-            {
-                throw new ArgumentNullException(nameof(resourceLocation), "Resource location must not be null");
-            }
-
-            if (resourceLocation.StartsWith(CLASSPATH_URL_PREFIX))
-            {
-                string path = resourceLocation.Substring(CLASSPATH_URL_PREFIX.Length);
-                string description = $"Class path resource [{path}]";
-
-                var assembly = typeof(ProfileController).Assembly;
-                var resourceStream = assembly.GetManifestResourceStream(path);
-                if (resourceStream == null)
-                {
-                    throw new FileNotFoundException($"{description} cannot be resolved to absolute file path because it does not exist");
-                }
-
-                // Save resource to a temporary file
-                string tempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(path));
-                using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
-                {
-                    resourceStream.CopyTo(fileStream);
-                }
-                return new FileInfo(tempFilePath);
-            }
-
-            try
-            {
-                Uri uri = new Uri(resourceLocation);
-                if (uri.IsFile)
-                {
-                    return new FileInfo(uri.LocalPath);
-                }
-            }
-            catch (UriFormatException)
-            {
-                // Not a URL, treat as file path
-            }
-
-            return new FileInfo(resourceLocation);
-        }
+        
 
         [HttpPost("import/excel")]
         [Consumes("multipart/form-data")]
@@ -211,8 +159,8 @@ namespace NewPlasmaDonorsAPI.Controllers
             try
             {
 
-                string filePath = "/home/ubuntu/apps/deploy/static-files/donor_profile_template.xlsx";
-                FileInfo file = GetFile(filePath);
+                string filePath = Path.Combine(_env.WebRootPath,"files","donor_profile_template.xlsx");
+                FileInfo file = new FileInfo(filePath);
 
                 if (!file.Exists)
                 {
@@ -233,8 +181,5 @@ namespace NewPlasmaDonorsAPI.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Error retrieving file: {ex.Message}");
             }
         }
-
-
-
     }
 }

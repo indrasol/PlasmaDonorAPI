@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using NewPlasmaDonorsAPI.Models;
 using Log = Serilog.Log;
 using PlasmaDonorAPI.Dto;
+using Newtonsoft.Json;
 
 namespace NewPlasmaDonorsAPI.Services
 {
@@ -53,29 +54,32 @@ namespace NewPlasmaDonorsAPI.Services
 
         public async Task<ResInfo> GetDashboardStatsAsync()
         {
+
             int donorCount = await _statRepo.GetDonorCountAsync();
             int infCount = await _statRepo.GetInfluencerCountAsync();
             DateTime date30DaysAgo = DateTime.Now.AddDays(-30);
             int recentInfCount = await _statRepo.GetRecentInfluencerCountAsync(date30DaysAgo);
             int recentDonorCount = await _statRepo.GetRecentDonorCountAsync(date30DaysAgo);
 
+
             var dbsInfo = new DashboardStatInfo
             {
                 topCards = new List<KpiInfo>
-        {
-            new KpiInfo { title = "Donors", valStr = donorCount.ToString(), bgColor = "success", icon = "bi bi-wallet" },
-            new KpiInfo { title = "Influencers", valStr = infCount.ToString(), bgColor = "danger", icon = "bi bi-brightness-high" },
-            new KpiInfo { title = "New Donors", valStr = recentDonorCount.ToString(), bgColor = "warning", icon = "bi bi-book-half" },
-            new KpiInfo { title = "New Influencers", valStr = recentInfCount.ToString(), bgColor = "info", icon = "bi bi-box-fill" }
-        }
+                {
+                new KpiInfo { title = "Donors", valStr = donorCount.ToString(), bgColor = "success", icon = "bi bi-wallet" },
+                new KpiInfo { title = "Influencers", valStr = infCount.ToString(), bgColor = "danger", icon = "bi bi-brightness-high" },
+                new KpiInfo { title = "New Donors", valStr = recentDonorCount.ToString(), bgColor = "warning", icon = "bi bi-book-half" },
+                new KpiInfo { title = "New Influencers", valStr = recentInfCount.ToString(), bgColor = "info", icon = "bi bi-box-fill" }
+                }
             };
 
-            dbsInfo.infSeries = ToKpiInfo(_statRepo.GetInfTimeSeries(DateTime.Now));
-            dbsInfo.donorSeries = ToKpiInfo(_statRepo.GetDonorTimeSeries(DateTime.Now));
-            dbsInfo.pfsByStates = ToKpiInfoByLookup(_statRepo.GetProfilesByState());
-            dbsInfo.pfsByOccupation = ToKpiInfo(_statRepo.GetDonorsByOccupation());
+            
+            dbsInfo.donorSeries = ToKpiInfo(_statRepo.GetDonorTimeSeries(DateTime.Now).ToList());
+            dbsInfo.infSeries = ToKpiInfo(_statRepo.GetInfTimeSeries(DateTime.Now)).ToList();
+            dbsInfo.pfsByStates = ToKpiInfoByLookup(_statRepo.GetProfilesByState().ToList()); 
+            dbsInfo.pfsByOccupation = ToKpiInfoByLookup(_statRepo.GetDonorsByOccupation().ToList()); 
 
-            var topInfs =  _statRepo.GetTopInfluencers();
+            var topInfs = _statRepo.GetTopInfluencers();
             dbsInfo.topInfluencers = topInfs.Select(t =>
             {
                 string firstName = t.FirstName?.ToString() ?? "";
@@ -101,13 +105,14 @@ namespace NewPlasmaDonorsAPI.Services
                 };
 
             }).ToList();
+            _logger.LogInformation($"Dashboard Data: {JsonConvert.SerializeObject(dbsInfo)}");
 
-
+            //return Success(dbsInfo);
             return new ResInfo
             {
                 Status = true,
                 Data = dbsInfo,
-                Msg = "Success"
+                Msg = "success"
             };
         }
 
@@ -216,80 +221,80 @@ namespace NewPlasmaDonorsAPI.Services
             return obj != null && long.TryParse(obj.ToString(), out long value) ? value : 0;
         }
 
-        public async Task<List<ProfileDto>> GetDonorInfTreeDataAsync(int? paramInfId, TreeUtils TreeProcessor)
-        {
-            ProfileDto root = null;
-            if (paramInfId.HasValue && paramInfId < 0)
-            {
-                paramInfId = null;
-            }
+        //public async Task<List<ProfileDto>> GetDonorInfTreeDataAsync(int? paramInfId, TreeUtils TreeProcessor)
+        //{
+        //    ProfileDto root = null;
+        //    if (paramInfId.HasValue && paramInfId < 0)
+        //    {
+        //        paramInfId = null;
+        //    }
 
-            if (paramInfId.HasValue)
-            {
-                var pm = await _profileRepository.GetByIdAsync(paramInfId.Value);
-                if (pm != null)
-                {
-                    root = new ProfileDto
-                    {
-                        id = pm.id,
-                        name = $"{pm.firstName} {pm.lastName}".Trim(),
-                        email = pm.email
-                    };
-                }
-            }
+        //    if (paramInfId.HasValue)
+        //    {
+        //        var pm = await _profileRepository.GetByIdAsync(paramInfId.Value);
+        //        if (pm != null)
+        //        {
+        //            root = new ProfileDto
+        //            {
+        //                id = pm.id,
+        //                name = $"{pm.firstName} {pm.lastName}".Trim(),
+        //                email = pm.email
+        //            };
+        //        }
+        //    }
 
-            List<Tuple<long, long?, string, string, string, string>> infData;
-            bool isForOneInf = false;
+        //    List<Tuple<long, long?, string, string, string, string>> infData;
+        //    bool isForOneInf = false;
 
-            if (!paramInfId.HasValue)
-            {
-                var profileList =   _statRepo.GetDonorInfDataAsync(); // Await if async
-                infData = profileList.Select(p =>
-                    Tuple.Create(p.id, (long?)p.influencedById, p.name, p.email, "", "")
-                ).ToList();
-            }
-            else
-            {
-                isForOneInf = true;
-                var tempData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
-                //infData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
-                infData = tempData.Select(t =>
-                Tuple.Create(t.Item1, (long?)t.Item2, t.Item3, t.Item4, t.Item5, t.Item6)
-                 ).ToList();
-            }
+        //    if (!paramInfId.HasValue)
+        //    {
+        //        var profileList =   _statRepo.GetDonorInfDataAsync(); // Await if async
+        //        infData = profileList.Select(p =>
+        //            Tuple.Create(p.id, (long?)p.influencedById, p.name, p.email, "", "")
+        //        ).ToList();
+        //    }
+        //    else
+        //    {
+        //        isForOneInf = true;
+        //        var tempData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
+        //        //infData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
+        //        infData = tempData.Select(t =>
+        //        Tuple.Create(t.Item1, (long?)t.Item2, t.Item3, t.Item4, t.Item5, t.Item6)
+        //         ).ToList();
+        //    }
 
 
-            var profiles = TupleToProfile(infData);
+        //    var profiles = TupleToProfile(infData);
 
-            if (isForOneInf)
-            {
-                var pIds = profiles.Select(p => (int)p.id).ToList();
-                infData = await _statRepo.GetDonorInfDataByInfIdAsync(pIds);
-                profiles.AddRange(TupleToProfile(infData));
-            }
+        //    if (isForOneInf)
+        //    {
+        //        var pIds = profiles.Select(p => (int)p.id).ToList();
+        //        infData = await _statRepo.GetDonorInfDataByInfIdAsync(pIds);
+        //        profiles.AddRange(TupleToProfile(infData));
+        //    }
 
-            var profileIds = profiles.Select(p => p.influencedById).ToList();
-            var scoreList = await _statRepo.GetScoreByInfIdsAsync(profileIds);
-            var scoreMap = scoreList.ToDictionary(t => t.Item1, t => t.Item1);
+        //    var profileIds = profiles.Select(p => p.influencedById).ToList();
+        //    //var scoreList = await _statRepo.GetScoreByInfIdsAsync(profileIds);
+        //    //var scoreMap = scoreList.ToDictionary(t => t.Item1, t => t.Item1);
 
-            profiles.ForEach(p =>
-            {
-                if (scoreMap.ContainsKey(p.id))
-                {
-                    p.name += $" ({scoreMap[p.id]})";
-                }
-            });
+        //    profiles.ForEach(p =>
+        //    {
+        //        if (scoreMap.ContainsKey(p.id))
+        //        {
+        //            p.name += $" ({scoreMap[p.id]})";
+        //        }
+        //    });
 
-            if (root != null && scoreMap.ContainsKey(root.id))
-            {
-                root.name += $" ({scoreMap[root.id]})";
-            }
+        //    if (root != null && scoreMap.ContainsKey(root.id))
+        //    {
+        //        root.name += $" ({scoreMap[root.id]})";
+        //    }
 
-            var rootProfiles = TreeProcessor.Process(profiles, root);
-            rootProfiles = rootProfiles.OrderByDescending(w => w.children.Count).Take(5).ToList();
+        //    var rootProfiles = TreeProcessor.Process(profiles, root);
+        //    rootProfiles = rootProfiles.OrderByDescending(w => w.children.Count).Take(5).ToList();
 
-            return rootProfiles;
-        }
+        //    return rootProfiles;
+        //}
 
         private List<ProfileDto> TupleToProfile(List<Tuple<long, long?, string, string, string, string>> infData)
         {
@@ -503,7 +508,7 @@ namespace NewPlasmaDonorsAPI.Services
                 .ToList();
 
             var scoreMap = (await _statRepo.GetScoreByInfIdsAsync(profileIds))
-                .ToDictionary(t => t.Item1, t => (int)t.Item2);
+                .ToDictionary(t => t.Item1, t => (double)t.Item2);
 
             profiles.ForEach(p =>
             {

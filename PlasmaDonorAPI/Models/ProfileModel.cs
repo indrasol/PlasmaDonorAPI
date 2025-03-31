@@ -8,29 +8,31 @@ namespace NewPlasmaDonorsAPI.Models
 
         [Key]
         public long id { get; set; }
-
-        public int? age { get; set; }
-
-        public DateTime? createdOn { get; set; }
-
-        public DateTime? dob { get; set; }
-
-        [StringLength(255)]
-        public string? email { get; set; }
-
+        
         [Required]
         [StringLength(255)]
         public string? firstName { get; set; }
 
         [StringLength(255)]
+        public string? lastName { get; set; }
+        public DateTime? dob { get; set; }
+
+        [StringLength(255)]
         public string? gender { get; set; }
+        public int? age { get; set; }
+
+        public DateTime? createdOn { get; set; }
+
+     
+
+        [StringLength(255)]
+        public string? email { get; set; }
+
 
         public bool? isDonor { get; set; }
 
         public bool? isInfluencer { get; set; }
 
-        [StringLength(255)]
-        public string? lastName { get; set; }
 
         [StringLength(255)]
         public string? phoneNumber { get; set; }
@@ -74,12 +76,12 @@ namespace NewPlasmaDonorsAPI.Models
 
         //public long? hobbies { get; set; }
 
-        public string interests { get; set; }
+        //public string interests { get; set; }
 
         [StringLength(255)]
         public string? Status { get; set; }
-        
-        public int infScore { get; set; }
+
+        public double infScore { get; set; }
 
         // Navigation Properties (for foreign keys)
         public virtual Address? Address { get; set; }

@@ -64,6 +64,13 @@ namespace PlasmaDonorAPI.Repositories
             return await _context.profiles.FirstOrDefaultAsync(p => p.email == email);
         }
 
+        public List<ProfileModel> FindAllInfluencers()
+        {
+            return _context.profiles
+                .Where(p => p.isInfluencer == true)
+                .ToList();
+        }
+
         public async Task<List<ProfileDto>> GetAllInfluencersByHomeCenterAsync(long hcId)
         {
             var query = profileQuery + " AND a.home_center_id = {0} AND a.is_influencer = true " + grpBy;
@@ -84,56 +91,50 @@ namespace PlasmaDonorAPI.Repositories
             return profiles;
         }
 
-
         public async Task<List<ProfileModel>> GetAllInfluencersByHomeCenterIdAsync(int hcId)
         {
-            return await _context.profiles.Where(p => p.isInfluencer==true && p.homeCenterId == hcId).ToListAsync();
+            return await _context.profiles?.Where(p => p.isInfluencer==true && p.homeCenterId == hcId).ToListAsync() ?? new List<ProfileModel>();
         }
 
-        public async Task<List<ProfileModel>> GetAllInfluencersAsync()
+        public  List<ProfileModel> getAllInfluencers()
         {
-            return await _context.profiles.Where(p => p.isInfluencer == true).ToListAsync();
+            return  _context.profiles?.Where(p => p.isInfluencer == true).ToList() ?? new List<ProfileModel>();
         }
-
-        public async Task<List<ProfileDto>> GetAllProfilesAsync()
-        {
-            string query = profileQuery + grpBy;
-
-            var result = await _context.profiles
-                .FromSqlRaw(query)
-                .Select(p => new ProfileDto
-                {
-                    email = p.email,
-                    firstName = p.firstName,
-                    lastName = p.lastName,
-                    phoneNumber = p.phoneNumber,
-                    
-                })
-                .ToListAsync();
-
-            return result;
-        }
-
-
 
         //public async Task<List<ProfileModel>> GetAllProfilesAsync()
         //{
-        //    return await _context.profiles
-        //        .Where(p => p.Status == null || p.Status != "deleted")
-        //        .Include(p => p.Language)
-        //        .Include(p => p.Race)
-        //        .Include(p => p.Relationship)
-        //        .Include(p => p.Occupation)
-        //        .Include(p => p.Education)
-        //        .Include(p => p.Address)
-        //        .Include(p => p.HomeCenter)
-        //        //.Include(p => p.hobbies)
-        //        .Include(p => p.interests)
-        //        .Include(p => p.InfluencedBy)
-        //        .Include(p => p.isDonor)
-        //        .ToListAsync();
-        //}
+        //    string query = profileQuery + grpBy;
 
+        //    var result = await _context.profiles
+        //        .FromSqlRaw(query)
+        //        .Select(p => new ProfileModel
+        //        {
+        //            email = p.email,
+        //            firstName = p.firstName,
+        //            lastName = p.lastName,
+        //            phoneNumber = p.phoneNumber,
+
+        //        })
+        //        .ToListAsync();
+
+        //    return result;
+        //}
+        public List<ProfileDto> findAllProfiles()
+    
+        {
+            string query = profileQuery + grpBy;  // Combine the query parts dynamically
+
+            return _context.profiles
+                .FromSqlRaw(query)
+                .Select(p => new ProfileDto
+                {
+                    email=p.email,
+                    firstName= p.firstName,
+                    lastName=p.lastName,
+                    phoneNumber=p.phoneNumber
+                })
+                .ToList();
+        }
         public async Task<List<ProfileModel>> GetAllInfluencersDetailedAsync()
         {
             return await _context.profiles
@@ -141,12 +142,12 @@ namespace PlasmaDonorAPI.Repositories
                 .Include(p => p.Language)
                 .Include(p => p.Race)
                 .Include(p => p.Relationship)
-                .Include(p => p.Occupation)
-                .Include(p => p.Education)
+                .Include(p => p.occupation)
+                .Include(p => p.education)
                 .Include(p => p.Address)
                 .Include(p => p.HomeCenter)
                 //.Include(p => p.hobbies)
-                .Include(p => p.interests)
+                //.Include(p => p.interests)
                 .Include(p => p.InfluencedBy)
                 .Include(p => p.isDonor)
                 .ToListAsync();

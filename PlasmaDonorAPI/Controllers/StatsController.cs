@@ -7,6 +7,8 @@ using NewPlasmaDonorsAPI.Data;
 using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Services;
 using Serilog;
+using Azure;
+using Newtonsoft.Json;
 
 namespace NewPlasmaDonorsAPI.Controllers
 {
@@ -17,25 +19,21 @@ namespace NewPlasmaDonorsAPI.Controllers
     {
         private readonly StatService _statService;
         private readonly ILogger<StatsController> _logger;
-        private readonly AppDbContext _context; // Add DbContext as a dependency
+        private readonly AppDbContext _context; 
 
         public StatsController(StatService statService, ILogger<StatsController> logger, AppDbContext context)
         {
             _statService = statService;
             _logger = logger;
-            _context = context; // Initialize DbContext
+            _context = context;  
         }
 
-       
         [HttpGet("dashboard")]
         public async Task<ActionResult<ResInfo>> GetDashboardStats()
         {
-            var result = await _statService.GetDashboardStatsAsync(); // ✅ Await the async method
-            return Ok(result);
+            var result = await _statService.GetDashboardStatsAsync(); 
+            return Ok(result); 
         }
-
-
-
 
         [HttpPost("inf-tree-data")]
         public async Task<ActionResult<ResInfo>> InfTreeData([FromBody] ProfileDto pDto)

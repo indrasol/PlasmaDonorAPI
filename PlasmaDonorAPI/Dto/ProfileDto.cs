@@ -63,7 +63,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public List<long>? hobbiesIds { get; set; }
         public long homeCenterId { get; set; }
         public string? homeCenter { get; set; }
-        public string? createdOn { get; set; }
+        public DateTime? createdOn { get; set; }
         public int ageGroup { get; set; }
         public string? relshipStatus { get; set; }
         public string? occupation { get; set; }

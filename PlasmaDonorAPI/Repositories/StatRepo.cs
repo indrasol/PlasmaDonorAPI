@@ -324,69 +324,7 @@ public class StatRepo : IStatRepo
             .FromSqlRaw(query)
             .ToList();
     }
-    //public async Task<List<Tuple<string, string, string, string, string, string, double>>> GetTopInfluencersAsync()
-    //{
-    //    string sqlQuery = @"
-    //    SELECT 
-    //        b.first_name AS FirstName, 
-    //        b.last_name AS LastName, 
-    //        b.email AS Email,  
-    //        e.address_line AS AddressLine, 
-    //        e.city AS City, 
-    //        e.state AS State,
-    //        SUM(d.md_score) AS InfScore 
-    //    FROM donar_influencer_map a
-    //    LEFT JOIN profiles b ON b.id = a.influenced_by 
-    //    LEFT JOIN profiles c ON c.id = a.profile_id 
-    //    LEFT JOIN master_data d ON c.relationship_id = d.id 
-    //    LEFT JOIN address e ON b.address_id = e.id 
-    //    GROUP BY a.influenced_by, b.first_name, b.last_name, b.email, e.address_line, e.city, e.state 
-    //    ORDER BY InfScore DESC 
-    //    LIMIT 20";
-
-    //    var result = await _context.Set<TopInfluencersinfo>()
-    //        .FromSqlRaw(sqlQuery)
-    //        .ToListAsync();
-
-    //    return result.Select(r => Tuple.Create(
-    //        r.firstName,
-    //        r.lastName,
-    //        r.Email,
-    //        r.AddressLine,
-    //        r.City,
-    //        r.State,
-    //        Convert.ToDouble(r.InfScore)
-    //    )).ToList();
-    //}
-
-
-    //public async Task<List<Tuple<string, string, string, string, string, string, double>>> GetTopInfluencersAsync()
-    //{
-    //    string sqlQuery = @"
-    //    SELECT 
-    //        b.first_name AS FirstName, 
-    //        b.last_name AS LastName, 
-    //        b.email AS Email,  
-    //        e.address_line AS AddressLine, 
-    //        e.city AS City, 
-    //        e.state AS State,
-    //        e.country AS Country,  
-    //        SUM(d.md_score) AS InfScore 
-    //    FROM donar_influencer_map a
-    //    LEFT JOIN profiles b ON b.id = a.influenced_by 
-    //    LEFT JOIN profiles c ON c.id = a.profile_id 
-    //    LEFT JOIN master_data d ON c.relationship_id = d.id 
-    //    LEFT JOIN address e ON b.address_id = e.id 
-    //    GROUP BY a.influenced_by, 
-    //    ORDER BY InfScore DESC 
-    //    LIMIT 20";
-
-    //    return await _context.Set<TopInfluencerInfo>()
-    //        .FromSqlRaw(sqlQuery)
-    //        .ToListAsync();
-    //}
-
-
+    
     public List<ProfileDto> GetDonorInfDataAsync()
     {
         string sql = @"
@@ -429,20 +367,17 @@ public class StatRepo : IStatRepo
             .FromSqlRaw(sqlQuery, infIds.ToArray()) // Pass array of IDs as parameter
             .ToListAsync();
 
-        // Convert the result to List<Tuple<long, long?, string, string, string, string>>
         return result.Select(x => new Tuple<long, long?, string, string, string, string>(
             x.DonorId, x.InfId, x.DonorEmail, x.InfluencerEmail, x.DonorFirstName, x.DonorLastName)).ToList();
     }
-    public async Task<List<Tuple<long?, int>>> GetScoreByInfIdsAsync(List<long> infIds)
+    public async Task<List<Tuple<long,double>>> GetScoreByInfIdsAsync(List<long> infIds)
     {
-        if (_context.profiles == null)
-        {
-            throw new InvalidOperationException("Profiles DbSet is null.");
-        }
+        if (infIds == null || !infIds.Any())
+            return new List<Tuple<long, double>>();
 
         return await _context.profiles
             .Where(s => infIds.Contains(s.id))
-            .Select(s => new Tuple<long?, int>(s.id, s.infScore))
+            .Select(s => new Tuple<long, double>(s.id, s.infScore))
             .ToListAsync();
     }
 }

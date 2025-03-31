@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using DocumentFormat.OpenXml.Drawing;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewPlasmaDonorsAPI.Data;
@@ -118,7 +119,7 @@ namespace NewPlasmaDonorsAPI.Services
                 sb.Append($" AND {sqlUtilService.AgeGroupQuery(profileReq.ageGroup)}");
             }
 
-            // **Executing the Query**
+        
             var results = _context.Database.SqlQuery<ProfileDto>($"{sb.ToString()}").ToList();
 
             return new ResInfo
@@ -243,22 +244,22 @@ namespace NewPlasmaDonorsAPI.Services
 
         public ResInfo GetInfluencersForLb(int? hcId)
         {
-            //_logger.LogInformation("Getting influencers for LB.");
+            _logger.LogInformation("Getting influencers for LB.");
 
             List<ProfileModel> list = new List<ProfileModel>();
-
-            if (hcId != null && hcId < 0)
+            //var list=new List<ProfileModel>();
+            if (hcId.HasValue  && hcId < 0)
             {
                 hcId = null;
             }
 
-            if (NullUtils.IsValid(hcId))
+            if (hcId.HasValue)
             {
-                list = _profileRepository.GetAllInfluencersByHomeCenterIdAsync(hcId.Value).Result;
+                 list = _profileRepository.GetAllInfluencersByHomeCenterIdAsync(hcId.Value).Result;
             }
             else
             {
-                list = _profileRepository.GetAllInfluencersAsync().Result;
+                 list = _profileRepository.FindAllInfluencers();
             }
 
             var influencers = list.Select(l => new MdInfo
@@ -269,24 +270,6 @@ namespace NewPlasmaDonorsAPI.Services
 
             return Success(influencers);
         }
-
-        //public ResInfo GetInfluencersForLb()
-        //{
-        //    _logger.LogInformation("Getting influencers for LB.");
-
-        //    // Fetch the list of influencers from the ProfileRepository
-        //    var list = _profileRepository.GetAllInfluencersAsync().Result;
-
-        //    // Map the list of ProfileModel to MdInfo
-        //    var influencers = list.Select(l => new MdInfo
-        //    {
-        //        Id = l.id,
-        //        Name = l.firstName + " " + l.lastName
-        //    }).ToList();
-
-        //    // Return success response with the list of influencers
-        //    return Success(influencers);
-        //}
 
         public async Task<ResInfo> GetProfileListNew()
         {
@@ -307,12 +290,12 @@ namespace NewPlasmaDonorsAPI.Services
             else
             {
                 list = isInfluencer.HasValue && isInfluencer.Value
-                    ? await _profileRepository.GetAllInfluencersAsync()
-                    : await _profileRepository.GetAllProfilesAsync();
+                ?  _profileRepository.getAllInfluencers()
+                    :  _profileRepository.findAllProfiles();
             }
             string email = string.Empty;
             int cnt = 0;
-            var profileList = list.Select(t =>
+            var profileList = list.Take(10).Select(t =>
             {
                 cnt++;
                 email = t.email;
@@ -322,71 +305,69 @@ namespace NewPlasmaDonorsAPI.Services
                     {
                         email = t.email,
                         firstName = t.firstName,
-                        lastName = NameUtils.StrVal(t.lastName),
-                        name = NameUtils.Appender(" ", NameUtils.StrVal(t.firstName), NameUtils.StrVal(t.lastName)),
+                        lastName = t.lastName,
                         phoneNumber = NameUtils.StrVal(t.phoneNumber),
-                        gender = NameUtils.Gender(NameUtils.StrVal(t.gender)),
-                        dob = DateUtils.ToShortString(NameUtils.DateVal(t.dob)),
-                        isDonor = NullUtils.IsValid(NameUtils.BoolVal(t.isDonor)) ? NameUtils.BoolVal(t.isDonor) : false,
-                        isInfluencer = NullUtils.IsValid(NameUtils.BoolVal(t.isInfluencer)) ? NameUtils.BoolVal(t.isInfluencer) : false,
-                        createdOn = DateUtils.ToShortString(NameUtils.DateVal(t.createdOn)),
-                        schoolAttended = NameUtils.StrVal(t.schoolAttended),
-                        languageId = NameUtils.LongVal(t.languageId),
-                        language = NameUtils.StrVal(t.language),
-                        raceId = NameUtils.LongVal(t.raceId),
-                        race = NameUtils.StrVal(t.race),
-                        relationshipId = NameUtils.LongVal(t.relationshipId),
-                        relationship = NameUtils.StrVal(t.relationship),
-                        occupationId = NameUtils.LongVal(t.occupationId),
-                        occupation = NameUtils.StrVal(t.occupation),
-                        educationId = NameUtils.LongVal(t.educationId),
-                        education = NameUtils.StrVal(t.education),
-                        addressId = NameUtils.LongVal(t.addressId),
-                        addressLine1 = NameUtils.StrVal(t.addressLine1),
-                        city = NameUtils.StrVal(t.city),
-                        state = NameUtils.StrVal(t.state),
-                        stateCode = NameUtils.StrVal(t.stateCode),
-                        country = NameUtils.StrVal(t.country),
-                        countryCode = NameUtils.StrVal(t.countryCode),
-                        latitude = NameUtils.DoubleVal(t.latitude),
-                        longitude = NameUtils.DoubleVal(t.longitude),
-                        fullAddress = NameUtils.StrVal(t.fullAddress),
-                        postalCode = NameUtils.StrVal(t.postalCode),
-                        influencers = NameUtils.StrVal(t.influencers),
-                        infScore = NameUtils.DoubleVal(t.infScore),
-                        hobbieStr = NameUtils.StrVal(t.hobbieStr),
-                        interestStr = NameUtils.StrVal(t.interestStr),
-                        homeCenterId = NameUtils.LongVal(t.homeCenterId),
-                        homeCenter = NameUtils.StrVal(t.homeCenter),
-                        relshipStatus = NameUtils.StrVal(t.relshipStatus),
-                        id = NameUtils.LongVal(t.id)
+                        name = NameUtils.Appender(" ", NameUtils.StrVal(t.firstName), NameUtils.StrVal(t.lastName)),
+                        //gender = NameUtils.Gender(NameUtils.StrVal(t.gender)),
+                        //dob = DateUtils.ToShortString(NameUtils.DateVal(t.dob)),
+                        //isDonor = NullUtils.IsValid(NameUtils.BoolVal(t.isDonor)) ? NameUtils.BoolVal(t.isDonor) : false,
+                        //isInfluencer = NullUtils.IsValid(NameUtils.BoolVal(t.isInfluencer)) ? NameUtils.BoolVal(t.isInfluencer) : false,
+                        //createdOn = DateUtils.ToShortString(NameUtils.DateVal(t.createdOn)),
+                        //schoolAttended = NameUtils.StrVal(t.schoolAttended),
+                        //languageId = NameUtils.LongVal(t.languageId),
+                        //language = NameUtils.StrVal(t.language),
+                        //raceId = NameUtils.LongVal(t.raceId),
+                        //race = NameUtils.StrVal(t.race),
+                        //relationshipId = NameUtils.LongVal(t.relationshipId),
+                        //relationship = NameUtils.StrVal(t.relationship),
+                        //occupationId = NameUtils.LongVal(t.occupationId),
+                        //occupation = NameUtils.StrVal(t.occupation),
+                        //educationId = NameUtils.LongVal(t.educationId),
+                        //education = NameUtils.StrVal(t.education),
+                        //addressId = NameUtils.LongVal(t.addressId),
+                        //addressLine1 = NameUtils.StrVal(t.addressLine1),
+                        //city = NameUtils.StrVal(t.city),
+                        //state = NameUtils.StrVal(t.state),
+                        //stateCode = NameUtils.StrVal(t.stateCode),
+                        //country = NameUtils.StrVal(t.country),
+                        //countryCode = NameUtils.StrVal(t.countryCode),
+                        //latitude = NameUtils.DoubleVal(t.latitude),
+                        //longitude = NameUtils.DoubleVal(t.longitude),
+                        //fullAddress = NameUtils.StrVal(t.fullAddress),
+                        //postalCode = NameUtils.StrVal(t.postalCode),
+                        //influencers = NameUtils.StrVal(t.influencers),
+                        //infScore = NameUtils.DoubleVal(t.infScore),
+                        //hobbieStr = NameUtils.StrVal(t.hobbieStr),
+                        //interestStr = NameUtils.StrVal(t.interestStr),
+                        //homeCenterId = NameUtils.LongVal(t.homeCenterId),
+                        //homeCenter = NameUtils.StrVal(t.homeCenter),
+                        //relshipStatus = NameUtils.StrVal(t.relshipStatus),
+                        id = t.id,
                     };
 
-
-
                     // Convert CSV strings to lists
-                    string infIds = NameUtils.StrVal(t[36]);
-                    string hobbies = NameUtils.StrVal(t[37]);
-                    string interests = NameUtils.StrVal(t[38]);
+                    string infIds = NameUtils.StrVal(t.infIds);
+                    string hobbies = NameUtils.StrVal(t.hobbies);
+                    string interests = NameUtils.StrVal(t.interests);
 
-                    if (NullUtils.IsValid(infIds))
-                    {
-                        profileDto.influencerIds = infIds.Split(',')
-                            .Where(i => !string.IsNullOrWhiteSpace(i))
-                            .Select(i => long.Parse(i.Trim())).ToList();
-                    }
-                    if (NullUtils.IsValid(hobbies))
-                    {
-                        profileDto.hobbiesIds = hobbies.Split(',')
-                            .Where(i => !string.IsNullOrWhiteSpace(i))
-                            .Select(i => long.Parse(i.Trim())).ToList();
-                    }
-                    if (NullUtils.IsValid(interests))
-                    {
-                        profileDto.interestIds = interests.Split(',')
-                            .Where(i => !string.IsNullOrWhiteSpace(i))
-                            .Select(i => long.Parse(i.Trim())).ToList();
-                    }
+                    //if (NullUtils.IsValid(infIds))
+                    //{
+                    //    profileDto.influencerIds = infIds.Split(',')
+                    //        .Where(i => !string.IsNullOrWhiteSpace(i))
+                    //        .Select(i => long.Parse(i.Trim())).ToList();
+                    //}
+                    //if (NullUtils.IsValid(hobbies))
+                    //{
+                    //    profileDto.hobbiesIds = hobbies.Split(',')
+                    //        .Where(i => !string.IsNullOrWhiteSpace(i))
+                    //        .Select(i => long.Parse(i.Trim())).ToList();
+                    //}
+                    //if (NullUtils.IsValid(interests))
+                    //{
+                    //    profileDto.interestIds = interests.Split(',')
+                    //        .Where(i => !string.IsNullOrWhiteSpace(i))
+                    //        .Select(i => long.Parse(i.Trim())).ToList();
+                    //}
 
                     return profileDto;
                 }
@@ -400,34 +381,6 @@ namespace NewPlasmaDonorsAPI.Services
 
             return Success(profileList);
         }
-        //public async Task<ResInfo> GetProfileListNew()
-        //{
-        //    _logger.LogInformation("Getting the list of profiles.");
-
-        //    // Fetch all profiles from the repository
-        //    var list = await _profileRepository.GetAllProfilesAsync();
-
-        //    // Map each ProfileModel to ProfileDto
-        //    var infoList = list.Select(m =>
-        //    {
-        //        var info = ProfileMapper.MapToProfileDto(m);
-
-        //        // Map MasterData (e.g., language, race, occupation, relationship)
-        //        MapMasterData(m, ref info!);
-
-        //        // Map influencer relationships
-        //        var influencers = _dimRepo.FindAllByProfileId(m.id);
-        //        if (influencers != null && influencers.Any())
-        //        {
-        //            info.influencerIds = influencers.Select(i => i.InfluencerProfile!.id).ToList();
-        //        }
-
-        //        return info;
-        //    }).ToList();
-
-        //    return Success(infoList); // Return the successful response
-        //}
-
         public string UpdateProfile(ProfileModel updatedModel, long id)
         {
             // Find the existing profile by ID
@@ -439,10 +392,10 @@ namespace NewPlasmaDonorsAPI.Services
             }
 
             // Update the fields with values from the updated model
-            existingProfile.Education = updatedModel.Education;
+            existingProfile.education = updatedModel.education;
             existingProfile.RelshipReason = updatedModel.RelshipReason;
             existingProfile.Relationship = updatedModel.Relationship;
-            existingProfile.Occupation = updatedModel.Occupation;
+            existingProfile.occupation = updatedModel.occupation;
             existingProfile.Language = updatedModel.Language;
             existingProfile.Address = updatedModel.Address;
             existingProfile.Race = updatedModel.Race;
