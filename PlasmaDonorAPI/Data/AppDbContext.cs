@@ -151,14 +151,14 @@ namespace NewPlasmaDonorsAPI.Data
                 entity.Property(e => e.phoneNumber).HasColumnName("phone_number").HasMaxLength(255);
                 entity.Property(e => e.schoolAttended).HasColumnName("school_attended").HasMaxLength(255);
                 entity.Property(e => e.updatedOn).HasColumnName("updated_on").HasColumnType("datetime(6)").IsRequired(false);
-                entity.Property(e => e.address).HasColumnName("address_id");
+                entity.Property(e => e.address_id).HasColumnName("address_id");
                 entity.Property(e => e.createdBy).HasColumnName("created_by");
-                entity.Property(e => e.education).HasColumnName("education_id");
-                entity.Property(e => e.language).HasColumnName("language_id");
-                entity.Property(e => e.occupation).HasColumnName("occupation_id");
-                entity.Property(e => e.race).HasColumnName("race_id");
-                entity.Property(e => e.relationship).HasColumnName("relationship_id");
-                entity.Property(e => e.relshipReason).HasColumnName("relship_reason_id");
+                entity.Property(e => e.education_id).HasColumnName("education_id");
+                entity.Property(e => e.language_id).HasColumnName("language_id");
+                entity.Property(e => e.occupation_id).HasColumnName("occupation_id");
+                entity.Property(e => e.race_id).HasColumnName("race_id");
+                entity.Property(e => e.relationship_id).HasColumnName("relationship_id");
+                entity.Property(e => e.relship_reason_id).HasColumnName("relship_reason_id");
                 entity.Property(e => e.updatedBy).HasColumnName("updated_by");
                 entity.Property(e => e.HomeCenter).HasColumnName("home_center");
                 entity.Property(e => e.InfluencedBy).HasColumnName("influenced_by").HasMaxLength(255);
@@ -171,7 +171,7 @@ namespace NewPlasmaDonorsAPI.Data
                 // Foreign Key Relationships
                 entity.HasOne(e => e.Address)
                       .WithMany()
-                      .HasForeignKey(e => e.address)
+                      .HasForeignKey(e => e.address_id)
                       .HasConstraintName("FK7qb4kty1ih8s2hauc511hxn6n")
                       .OnDelete(DeleteBehavior.Restrict);
 
@@ -189,37 +189,37 @@ namespace NewPlasmaDonorsAPI.Data
 
                 entity.HasOne(e => e.Education)
                       .WithMany()
-                      .HasForeignKey(e => e.education)
+                      .HasForeignKey(e => e.education_id)
                       .HasConstraintName("FK6dvtxtc424ogal2jtnxdh7c0")
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Language)
                       .WithMany()
-                      .HasForeignKey(e => e.language)
+                      .HasForeignKey(e => e.language_id)
                       .HasConstraintName("FKrjn1ucsoa08h67xg24ypuqwxw")
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Occupation)
                       .WithMany()
-                      .HasForeignKey(e => e.occupation)
+                      .HasForeignKey(e => e.occupation_id)
                       .HasConstraintName("FK45nymxuj55tpmnrj2v2cm08vk")
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Race)
                       .WithMany()
-                      .HasForeignKey(e => e.race)
+                      .HasForeignKey(e => e.race_id)
                       .HasConstraintName("FKryh63mrluhx6dv2xhewpn88yk")
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Relationship)
                       .WithMany()
-                      .HasForeignKey(e => e.relationship)
+                      .HasForeignKey(e => e.relationship_id)
                       .HasConstraintName("FK7h9k3wpqia2jss4yvlbyf94wa")
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.RelshipReason)
                       .WithMany()
-                      .HasForeignKey(e => e.relshipReason)
+                      .HasForeignKey(e => e.relship_reason_id)
                       .HasConstraintName("FKgrdgwmydu1ovly29y5b5o3xlp")
                       .OnDelete(DeleteBehavior.Restrict);
 

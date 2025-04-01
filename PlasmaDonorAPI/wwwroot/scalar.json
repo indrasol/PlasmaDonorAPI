@@ -1,0 +1,15 @@
+{
+    "info": {
+        "title": "Plasma Donor API",
+        "description": "This is a powerful API for managing donors.",
+        "termsOfService": "https://nuram.xyz",
+        "contact": {
+            "name": "Support Team",
+            "email": "support@nuram.xyz"
+        }
+    },
+    "theme": {
+        "primaryColor": "#1E88E5",
+        "backgroundColor": "#f4f4f4"
+    }
+}
