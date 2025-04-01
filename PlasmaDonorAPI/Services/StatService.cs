@@ -18,6 +18,7 @@ using NewPlasmaDonorsAPI.Models;
 using Log = Serilog.Log;
 using PlasmaDonorAPI.Dto;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Primitives;
 
 namespace NewPlasmaDonorsAPI.Services
 {
@@ -41,7 +42,7 @@ namespace NewPlasmaDonorsAPI.Services
             ProfileService profileService,
             SqlUtilService sqlUtilService,
             AppDbContext context
-        ) : base(logger,httpContextAccessor)
+        ) : base(logger, httpContextAccessor)
         {
             _logger = logger;
             _statRepo = statRepo;
@@ -66,18 +67,18 @@ namespace NewPlasmaDonorsAPI.Services
             {
                 topCards = new List<KpiInfo>
                 {
-                new KpiInfo { title = "Donors", valStr = donorCount.ToString(), bgColor = "success", icon = "bi bi-wallet" },
-                new KpiInfo { title = "Influencers", valStr = infCount.ToString(), bgColor = "danger", icon = "bi bi-brightness-high" },
-                new KpiInfo { title = "New Donors", valStr = recentDonorCount.ToString(), bgColor = "warning", icon = "bi bi-book-half" },
-                new KpiInfo { title = "New Influencers", valStr = recentInfCount.ToString(), bgColor = "info", icon = "bi bi-box-fill" }
+                new KpiInfo { title = "Donors",value=donorCount, valStr = donorCount.ToString(), bgColor = "success", icon = "bi bi-wallet" },
+                new KpiInfo { title = "Influencers",value=infCount, valStr = infCount.ToString(), bgColor = "danger", icon = "bi bi-brightness-high" },
+                new KpiInfo { title = "New Donors",value=recentDonorCount, valStr = recentDonorCount.ToString(), bgColor = "warning", icon = "bi bi-book-half" },
+                new KpiInfo { title = "New Influencers",value=recentInfCount, valStr = recentInfCount.ToString(), bgColor = "info", icon = "bi bi-box-fill" }
                 }
             };
 
-            
+
             dbsInfo.donorSeries = ToKpiInfo(_statRepo.GetDonorTimeSeries(DateTime.Now).ToList());
             dbsInfo.infSeries = ToKpiInfo(_statRepo.GetInfTimeSeries(DateTime.Now)).ToList();
-            dbsInfo.pfsByStates = ToKpiInfoByLookup(_statRepo.GetProfilesByState().ToList()); 
-            dbsInfo.pfsByOccupation = ToKpiInfoByLookup(_statRepo.GetDonorsByOccupation().ToList()); 
+            dbsInfo.pfsByStates = ToKpiInfoByLookup(_statRepo.GetProfilesByState().ToList());
+            dbsInfo.pfsByOccupation = ToKpiInfoByLookup(_statRepo.GetDonorsByOccupation().ToList());
 
             var topInfs = _statRepo.GetTopInfluencers();
             dbsInfo.topInfluencers = topInfs.Select(t =>
@@ -140,6 +141,7 @@ namespace NewPlasmaDonorsAPI.Services
                 infSeries.Add(new KpiInfo
                 {
                     title = dt,
+                    value= val,
                     valStr = val.ToString()
                 });
             }
@@ -152,6 +154,7 @@ namespace NewPlasmaDonorsAPI.Services
         {
             return lst.Select(d =>
             {
+                Int64 value = d.Item2;
                 string val = d.Item2.ToString();
                 string title = d.Item1;
 
@@ -162,6 +165,7 @@ namespace NewPlasmaDonorsAPI.Services
 
                 return new KpiInfo
                 {
+                    value = value,
                     valStr = val,
                     title = title
                 };
@@ -307,125 +311,145 @@ namespace NewPlasmaDonorsAPI.Services
             }).ToList();
         }
 
-        public List<object[]> ProfileStatsDataByType(ProfileDto profileReq, string type)
+        public List<KpiInfo> ProfileStatsDataByType(ProfileDto profileReq, string type)
         {
-            if (profileReq == null)
+            try
             {
-                profileReq = new ProfileDto();
-            }
 
-            var qb = new StringBuilder();
+                if (profileReq == null)
+                {
+                    profileReq = new ProfileDto();
+                }
 
-            if (!string.IsNullOrEmpty(type))
-            {
+                var qb = new StringBuilder();
+                var parameters = new List<object>();
+
+                qb.Append("SELECT IFNULL(title,'Not Mentioned') AS title, CONVERT(IFNULL(value,0),CHAR) AS valStr, NULL AS bgColor, NULL AS icon, IFNULL(value,0) AS value, NULL AS cont FROM (");
+
+                // Base query setup based on type
+                if (!string.IsNullOrEmpty(type))
+                {
+                    if (type.Equals("states", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append("SELECT COUNT(a.id) AS value, b.state_code AS title FROM profiles a");
+                    }
+                    else if (type.Equals("cities", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append("SELECT COUNT(a.id) AS value, CONCAT(b.city, ', ', b.state_code) AS title FROM profiles a");
+                    }
+                    else
+                    {
+                        qb.Append("SELECT COUNT(a.id) AS value, b.md_title AS title FROM profiles a");
+                    }
+
+                    // Handle joins
+                    if (type.Equals("occupation", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append(" LEFT JOIN master_data b ON a.occupation_id = b.id ");
+                    }
+                    else if (type.Equals("relationship", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append(" LEFT JOIN master_data b ON a.relationship_id = b.id ");
+                    }
+                    else if (type.Equals("education", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append(" LEFT JOIN master_data b ON a.education_id = b.id ");
+                    }
+                    else if (type.Equals("states", StringComparison.OrdinalIgnoreCase) || type.Equals("cities", StringComparison.OrdinalIgnoreCase))
+                    {
+                        qb.Append(" LEFT JOIN address b ON a.address_id = b.id ");
+                    }
+                }
+
+                qb.Append(" WHERE a.id IS NOT NULL ");
+
+                // Add filters to query and corresponding parameters
+                if (profileReq.isDonor.HasValue && profileReq.isDonor.Value)
+                {
+                    qb.Append($" AND a.is_donor = {profileReq.isDonor}");
+                    parameters.Add(1);
+                }
+                if (profileReq.isInfluencer.HasValue && profileReq.isInfluencer.Value)
+                {
+                    qb.Append($" AND a.is_influencer = {profileReq.isInfluencer}");
+                    parameters.Add(1);
+                }
+                if (profileReq.homeCenterId > 0)
+                {
+                    qb.Append($" AND a.home_center_id = {profileReq.homeCenterId}");
+                    parameters.Add(profileReq.homeCenterId);
+                }
+
+                if (profileReq.relationshipId > 0)
+                {
+                    qb.Append($" AND a.relationship_id = {profileReq.relationshipId}");
+                    parameters.Add(profileReq.relationshipId);
+                }
+                if (!string.IsNullOrEmpty(profileReq.gender))
+                {
+                    qb.Append($" AND a.gender = {profileReq.gender}");
+                    parameters.Add(profileReq.gender);
+                }
+                if (profileReq.ageGroup > 0)
+                {
+                    qb.Append(" AND " + _sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
+                }
+
+                if (profileReq.influencedById > 0)
+                {
+                    qb.Append($" AND (c.id = {profileReq.influencedById} OR a.id = {profileReq.influencedById})");
+                    parameters.Add(profileReq.influencedById);
+                }
+                if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
+                {
+                    var infIds = string.Join(",", profileReq.influencerIds);
+                    qb.Append($" AND c.id IN ({infIds})");
+                }
+
+                // Add GROUP BY and ORDER BY clauses
                 if (type.Equals("states", StringComparison.OrdinalIgnoreCase))
                 {
-                    qb.Append("SELECT COUNT(a.id) AS cnt, b.state_code FROM profiles a");
+                    qb.Append(" GROUP BY b.state_code ");
                 }
                 else if (type.Equals("cities", StringComparison.OrdinalIgnoreCase))
                 {
-                    qb.Append("SELECT COUNT(a.id) AS cnt, CONCAT(b.city, ', ', b.state_code) FROM profiles a");
+                    qb.Append(" GROUP BY b.state_code, b.city ");
                 }
                 else
                 {
-                    qb.Append("SELECT COUNT(a.id) AS cnt, b.md_title FROM profiles a");
+                    qb.Append(" GROUP BY b.md_title ");
                 }
 
-                if (type.Equals("occupation", StringComparison.OrdinalIgnoreCase))
-                {
-                    qb.Append(" LEFT JOIN master_data b ON a.occupation_id = b.id ");
-                }
-                else if (type.Equals("relationship", StringComparison.OrdinalIgnoreCase))
-                {
-                    qb.Append(" LEFT JOIN master_data b ON a.relationship_id = b.id ");
-                }
-                else if (type.Equals("education", StringComparison.OrdinalIgnoreCase))
-                {
-                    qb.Append(" LEFT JOIN master_data b ON a.education_id = b.id ");
-                }
-                else if (type.Equals("states", StringComparison.OrdinalIgnoreCase) || type.Equals("cities", StringComparison.OrdinalIgnoreCase))
-                {
-                    qb.Append(" LEFT JOIN address b ON a.address_id = b.id ");
-                }
-            }
+                qb.Append(") AS t");
 
-            qb.Append(" WHERE a.id IS NOT NULL ");
+                qb.Append(" ORDER BY value DESC LIMIT 20 ");
 
-            if (profileReq.isDonor.HasValue && profileReq.isDonor.Value)
-            {
-                qb.Append(" AND a.is_donor = 1 ");
-            }
-            if (profileReq.isInfluencer.HasValue && profileReq.isInfluencer.Value)
-            {
-                qb.Append(" AND a.is_influencer = 1 ");
-            }
-            if (profileReq.homeCenterId > 0)
-            {
-                qb.Append($" AND a.home_center_id = {profileReq.homeCenterId}");
-            }
+                Console.WriteLine("Query::" + qb.ToString());
 
-            if (profileReq.relationshipId > 0)
-            {
-                qb.Append($" AND a.relationship_id = {profileReq.relationshipId}");
+                // Execute the query with parameters
+                return _context.Database
+                    .SqlQueryRaw<KpiInfo>(qb.ToString())
+                    .ToList();
             }
-            if (!string.IsNullOrEmpty(profileReq.gender))
+            catch (Exception ex)
             {
-                qb.Append($" AND a.gender = '{profileReq.gender}'");
-            }
-            if (profileReq.ageGroup > 0)
-            {
-                qb.Append(" AND " + _sqlUtilService.AgeGroupQuery(profileReq.ageGroup));
-            }
 
-            if (profileReq.influencedById > 0)
-            {
-                qb.Append($" AND (c.id = {profileReq.influencedById} OR a.id = {profileReq.influencedById})");
             }
-            if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
-            {
-                var infIds = string.Join(",", profileReq.influencerIds);
-                qb.Append($" AND c.id IN ({infIds})");
-            }
-
-            if (type.Equals("states", StringComparison.OrdinalIgnoreCase))
-            {
-                qb.Append(" GROUP BY b.state ");
-            }
-            else if (type.Equals("cities", StringComparison.OrdinalIgnoreCase))
-            {
-                qb.Append(" GROUP BY b.state_code, b.city ");
-            }
-            else
-            {
-                qb.Append(" GROUP BY b.md_title ");
-            }
-
-            qb.Append(" ORDER BY cnt DESC LIMIT 20 ");
-
-            Console.WriteLine("Query::" + qb.ToString());
-
-            return _context.profiles
-                .FromSqlRaw(qb.ToString())
-                .Select(p => new object[] { p.id, p.email ?? string.Empty}) // Adjust the selection as needed
-                .ToList();
+            return null;
         }
+
 
         public ResInfo ProfileStatsData(ProfileDto profileReq)
         {
             var dbsInfo = new DashboardStatInfo();
-            List<object[]> lst = new List<object[]>();
+            
+            dbsInfo.pfsByStates = ProfileStatsDataByType(profileReq, "states");
 
-            lst = ProfileStatsDataByType(profileReq, "states");
-            dbsInfo.pfsByStates = ToKpiInfoValues(lst);
+            dbsInfo.pfsByOccupation = ProfileStatsDataByType(profileReq, "occupation");
 
-            lst = ProfileStatsDataByType(profileReq, "occupation");
-            dbsInfo.pfsByOccupation = ToKpiInfoValues(lst);
+            dbsInfo.pfsByRels = ProfileStatsDataByType(profileReq, "relationship");
 
-            lst = ProfileStatsDataByType(profileReq, "relationship");
-            dbsInfo.pfsByRels = ToKpiInfoValues(lst);
-
-            lst = ProfileStatsDataByType(profileReq, "education");
-            dbsInfo.pfsByEdu = ToKpiInfoValues(lst);
+            dbsInfo.pfsByEdu = ProfileStatsDataByType(profileReq, "education");
 
             return Success(dbsInfo);
         }
@@ -434,7 +458,7 @@ namespace NewPlasmaDonorsAPI.Services
         public ResInfo InfStatsData(int? hmcId)
         {
             var dbsInfo = new DashboardStatInfo();
-            List<Tuple<string,int>> lst ;
+            List<Tuple<string, int>> lst;
 
             if (hmcId.HasValue && hmcId < 0)
             {
@@ -443,7 +467,7 @@ namespace NewPlasmaDonorsAPI.Services
 
             if (hmcId.HasValue)
             {
-                 lst = _statRepo.GetProfilesByStateByHomeCenter(hmcId.Value);
+                lst = _statRepo.GetProfilesByStateByHomeCenter(hmcId.Value);
                 dbsInfo.pfsByStates = ToKpiInfoByLookup(lst);
 
                 lst = _statRepo.GetInfuencersByOccupationByHomeCenter(hmcId.Value);
@@ -496,13 +520,13 @@ namespace NewPlasmaDonorsAPI.Services
             {
                 List<long> pIds = profiles
                     .Where(p => p.id != profileReq.influencedById)
-                    .Select(p => p.id)
+                    .Select(p => (long)p.id)
                     .ToList();
 
                 profiles.AddRange(getProfileList(new ProfileDto { influencerIds = pIds }));
             }
 
-            List<long> profileIds = profiles
+            List<long?> profileIds = profiles
                 .Where(p => p.influencedById > 0)
                 .Select(p => p.influencedById)
                 .ToList();
@@ -512,9 +536,9 @@ namespace NewPlasmaDonorsAPI.Services
 
             profiles.ForEach(p =>
             {
-                if (scoreMap.ContainsKey(p.id))
+                if (scoreMap.ContainsKey((long)p.id))
                 {
-                    p.name += $" ({scoreMap[p.id]})";
+                    p.name += $" ({scoreMap[(long)p.id]})";
                 }
             });
 
@@ -567,7 +591,7 @@ namespace NewPlasmaDonorsAPI.Services
             }
             if (profileReq.ageGroup > 0)
             {
-                qb.Append(" AND " + _sqlUtilService.AgeGroupQuery(profileReq.ageGroup));
+                qb.Append(" AND " + _sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
             }
             if (profileReq.influencedById > 0)
             {
@@ -609,7 +633,7 @@ namespace NewPlasmaDonorsAPI.Services
                 }).ToList();
 
             return profiles;
-            
+
         }
 
         public ResInfo DonorStatsHmData(ProfileDto pDto)
@@ -618,10 +642,10 @@ namespace NewPlasmaDonorsAPI.Services
             var dbsInfo = new DashboardStatInfo();
 
             // Fetch statistics data by type "cities"
-            List<object[]> lst = ProfileStatsDataByType(pDto, "cities");
+            //List<object[]> lst = ProfileStatsDataByType(pDto, "cities");
 
             // Convert data to KPI values and assign to `PfsByCities`
-            dbsInfo.pfsByCities = ToKpiInfoValues(lst);
+            dbsInfo.pfsByCities = ProfileStatsDataByType(pDto, "cities");          
 
             // Return success response
             return Success(dbsInfo);

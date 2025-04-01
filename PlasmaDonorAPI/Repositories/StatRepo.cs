@@ -382,7 +382,7 @@ public class StatRepo : IStatRepo
         return result.Select(x => new Tuple<long, long?, string, string, string, string>(
             x.DonorId, x.InfId, x.DonorEmail, x.InfluencerEmail, x.DonorFirstName, x.DonorLastName)).ToList();
     }
-    public async Task<List<Tuple<long,double>>> GetScoreByInfIdsAsync(List<long> infIds)
+    public async Task<List<Tuple<long,double>>> GetScoreByInfIdsAsync(List<long?> infIds)
     {
         if (infIds == null || !infIds.Any())
             return new List<Tuple<long, double>>();

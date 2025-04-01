@@ -4,7 +4,7 @@ namespace NewPlasmaDonorsAPI.Dto
 {
     public class ProfileDto
     {
-        public long id { get; set; }
+        public long? id { get; set; }
 
         //[Required]
         public string? firstName { get; set; }
@@ -14,7 +14,7 @@ namespace NewPlasmaDonorsAPI.Dto
 
         public DateTime? dob { get; set; }
 
-        public int age { get; set; }
+        public int? age { get; set; }
 
         public string? gender { get; set; }
 
@@ -64,7 +64,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public long? homeCenterId { get; set; }
         public string? homeCenter { get; set; }
         public DateTime? createdOn { get; set; }
-        public int ageGroup { get; set; }
+        public int? ageGroup { get; set; }
         public string? relshipStatus { get; set; }
         public string? occupation { get; set; }
 
@@ -89,7 +89,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public string? status { get; set; }
         public String? influencedBy { get; set; }
 
-        public long influencedById { get; set; }
+        public long? influencedById { get; set; }
 
         public List<ProfileDto> children = new List<ProfileDto>();
     }

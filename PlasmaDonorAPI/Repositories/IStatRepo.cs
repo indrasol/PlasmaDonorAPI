@@ -23,7 +23,7 @@ namespace NewPlasmaDonorsAPI.Repositories
         List<Tuple<string, int>> GetDonorsByOccupation();
         List<ProfileDto> GetDonorInfDataAsync();
         Task<List<Tuple<long, long?, string, string, string, string>>> GetDonorInfDataByInfIdAsync(List<int> infIds);
-        Task<List<Tuple<long, double>>> GetScoreByInfIdsAsync(List<long> profileIds);
+        Task<List<Tuple<long, double>>> GetScoreByInfIdsAsync(List<long?> profileIds);
         List<Tuple<string,int>> GetProfilesByStateByHomeCenter(int hmcId);
         List<Tuple<string,int>> GetInfuencersByOccupationByHomeCenter(int hmcId);
         List<TopInfluencerInfo> GetTopInfluencers();

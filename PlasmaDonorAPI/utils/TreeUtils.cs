@@ -33,9 +33,9 @@ namespace NewPlasmaDonorsAPI.utils
             var profiles = new Dictionary<long, ProfileDto>();
             foreach (var profile in profileList)
             {
-                if (!profiles.ContainsKey(profile.id))
+                if (!profiles.ContainsKey((long)profile.id))
                 {
-                    profiles[profile.id] = profile;
+                    profiles[(long)profile.id] = profile;
                 }
             }
 
