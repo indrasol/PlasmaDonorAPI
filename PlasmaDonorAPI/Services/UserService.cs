@@ -34,7 +34,7 @@ namespace NewPlasmaDonorsAPI.Services
 
 
 
-        public async Task<UserDto?> ValidateUserAsync(string email, string password)
+        public async Task<ResInfo?> ValidateUserAsync(string email, string password)
         {
             // Find the user by email
             var user = await _userRepository.FindByEmailAsync(email);
@@ -53,7 +53,7 @@ namespace NewPlasmaDonorsAPI.Services
                 UserDto userDto = new UserDto();
                 userDto.token = _jwtService.GenerateToken(email);
                 userDto.role = _roleRepository.GetById(user.roleId)?.role;
-                return userDto;
+                return Success(userDto);
             }
 
 

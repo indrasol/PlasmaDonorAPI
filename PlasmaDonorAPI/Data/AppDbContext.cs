@@ -165,7 +165,7 @@ namespace NewPlasmaDonorsAPI.Data
                 entity.Property(e => e.IsRelationshipActive).HasColumnName("is_relationship_active").HasColumnType("bit");
                 entity.Property(e => e.RelshipScoreId).HasColumnName("relship_score_id");
                 entity.Property(e => e.RelshipStatus).HasColumnName("relship_status").HasMaxLength(255);
-                entity.Property(e => e.HomeCenterId).HasColumnName("home_center_id");
+                entity.Property(e => e.homeCenterId).HasColumnName("home_center_id");
                 entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(255);
 
                 // Foreign Key Relationships
@@ -231,7 +231,7 @@ namespace NewPlasmaDonorsAPI.Data
 
                 entity.HasOne(e => e.HomeCenterLocation)
                       .WithMany()
-                      .HasForeignKey(e => e.HomeCenterId)
+                      .HasForeignKey(e => e.homeCenterId)
                       .HasConstraintName("FK15rkj9sb7mqtyitx20a9n4m")
                       .OnDelete(DeleteBehavior.Restrict);
             });

@@ -392,10 +392,10 @@ namespace NewPlasmaDonorsAPI.Services
             }
 
             // Update the fields with values from the updated model
-            existingProfile.education = updatedModel.education;
+            existingProfile.Education = updatedModel.Education;
             existingProfile.RelshipReason = updatedModel.RelshipReason;
             existingProfile.Relationship = updatedModel.Relationship;
-            existingProfile.occupation = updatedModel.occupation;
+            existingProfile.Occupation = updatedModel.Occupation;
             existingProfile.Language = updatedModel.Language;
             existingProfile.Address = updatedModel.Address;
             existingProfile.Race = updatedModel.Race;

@@ -4,7 +4,7 @@ namespace NewPlasmaDonorsAPI.Models
 {
     public class ProfileModel
     {
-        internal readonly int homeCenterId;
+        //internal readonly int homeCenterId;
 
         [Key]
         public long id { get; set; }
@@ -72,7 +72,7 @@ namespace NewPlasmaDonorsAPI.Models
         [StringLength(255)]
         public string? RelshipStatus { get; set; }
 
-        public long? HomeCenterId { get; set; }
+        public long? homeCenterId { get; set; }
 
         //public long? hobbies { get; set; }
 
