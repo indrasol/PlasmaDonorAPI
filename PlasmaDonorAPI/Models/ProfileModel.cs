@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NewPlasmaDonorsAPI.Models
 {
@@ -6,7 +7,7 @@ namespace NewPlasmaDonorsAPI.Models
     {
         //internal readonly int homeCenterId;
 
-        [Key]
+        //[Key]
         public long id { get; set; }
         
         [Required]
@@ -81,6 +82,7 @@ namespace NewPlasmaDonorsAPI.Models
         [StringLength(255)]
         public string? Status { get; set; }
 
+        [NotMapped]
         public double infScore { get; set; }
 
         // Navigation Properties (for foreign keys)

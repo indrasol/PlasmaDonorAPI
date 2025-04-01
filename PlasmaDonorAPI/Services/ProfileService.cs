@@ -634,7 +634,7 @@ namespace NewPlasmaDonorsAPI.Services
             }
             string email = string.Empty;
             int cnt = 0;
-            var profileList = list.Take(10).Select(t =>
+            var profileList = list.Select(t =>
             {
                 cnt++;
                 email = t.email;
@@ -685,9 +685,9 @@ namespace NewPlasmaDonorsAPI.Services
                     };
 
                     // Convert CSV strings to lists
-                    string infIds = NameUtils.StrVal(t.infIds);
-                    string hobbies = NameUtils.StrVal(t.hobbies);
-                    string interests = NameUtils.StrVal(t.interests);
+                    //string infIds = NameUtils.StrVal(t.infIds);
+                    //string hobbies = NameUtils.StrVal(t.hobbies);
+                    //string interests = NameUtils.StrVal(t.interests);
 
                     //if (NullUtils.IsValid(infIds))
                     //{
