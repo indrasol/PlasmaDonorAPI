@@ -19,6 +19,8 @@ using Log = Serilog.Log;
 using PlasmaDonorAPI.Dto;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace NewPlasmaDonorsAPI.Services
 {
@@ -550,6 +552,69 @@ namespace NewPlasmaDonorsAPI.Services
             return Success(rootProfiles);
         }
 
+        //private List<ProfileDto> getProfileList(ProfileDto profileReq)
+        //{
+        //    if (profileReq == null)
+        //    {
+        //        profileReq = new ProfileDto();
+        //    }
+
+        //    String profileQuery = "SELECT a.id, c.id, a.email, c.email, a.first_name, a.last_name, c.first_name, c.last_name " +
+        //                          "FROM profiles AS a " +
+        //                          "LEFT JOIN donar_influencer_map AS b ON b.profile_id = a.id " +
+        //                          "LEFT JOIN profiles AS c ON b.influenced_by = c.id " +
+        //                          "WHERE a.id IS NOT NULL ";
+
+        //    StringBuilder qb = new StringBuilder(profileQuery);
+        //    Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+        //    if (Boolean.TrueString.Equals(profileReq.isDonor))
+        //    {
+        //        qb.Append(" AND a.is_donor = true ");
+        //    }
+        //    if (Boolean.TrueString.Equals(profileReq.isInfluencer))
+        //    {
+        //        qb.Append(" AND a.is_influencer = true ");
+        //    }
+        //    if (profileReq.homeCenterId > 0)
+        //    {
+        //        qb.Append(" AND a.home_center_id = @homeCenterId ");
+        //        parameters.Add("homeCenterId", profileReq.homeCenterId);
+        //    }
+        //    if (profileReq.relationshipId > 0)
+        //    {
+        //        qb.Append(" AND a.relationship_id = @relationshipId ");
+        //        parameters.Add("relationshipId", profileReq.relationshipId);
+        //    }
+        //    if (!string.IsNullOrEmpty(profileReq.gender))
+        //    {
+        //        qb.Append(" AND a.gender = @gender ");
+        //        parameters.Add("gender", profileReq.gender);
+        //    }
+        //    if (profileReq.ageGroup > 0)
+        //    {
+        //        qb.Append(" AND " + _sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
+        //    }
+        //    if (profileReq.influencedById > 0)
+        //    {
+        //        qb.Append(" AND (c.id = @influencedById OR a.id = @influencedById) ");
+        //        parameters.Add("influencedById", profileReq.influencedById);
+        //    }
+        //    if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
+        //    {
+        //        qb.Append(" AND c.id IN (@influencerIds) ");
+        //        parameters.Add("influencerIds", profileReq.influencerIds);
+        //    }
+
+        //    var query = _context.profiles.FromSqlRaw(qb.ToString());
+        //    foreach (var parameter in parameters)
+        //    {
+        //        query = query.AsQueryable().Where(p => EF.Property<object>(p, parameter.Key) == parameter.Value);
+        //    }
+        //    List<ProfileModel> list = query.ToList();
+        //    return ObjectsToProfile(list.Select(p => new object[] { p.id, p.email, p.firstName, p.lastName }).ToList());
+        //}
+
         private List<ProfileDto> getProfileList(ProfileDto profileReq)
         {
             if (profileReq == null)
@@ -557,61 +622,117 @@ namespace NewPlasmaDonorsAPI.Services
                 profileReq = new ProfileDto();
             }
 
-            String profileQuery = "SELECT a.id, c.id, a.email, c.email, a.first_name, a.last_name, c.first_name, c.last_name " +
-                                  "FROM profiles AS a " +
-                                  "LEFT JOIN donar_influencer_map AS b ON b.profile_id = a.id " +
-                                  "LEFT JOIN profiles AS c ON b.influenced_by = c.id " +
-                                  "WHERE a.id IS NOT NULL ";
+            string profileQuery = @"
+        SELECT a.id AS donorId, c.id AS influencerId, 
+               a.email AS donorEmail, c.email AS influencerEmail, 
+               a.first_name AS donorFirstName, a.last_name AS donorLastName, 
+               c.first_name AS influencerFirstName, c.last_name AS influencerLastName
+        FROM profiles AS a
+        LEFT JOIN donar_influencer_map AS b ON b.profile_id = a.id
+        LEFT JOIN profiles AS c ON b.influenced_by = c.id
+        WHERE a.id IS NOT NULL ";
 
-            StringBuilder qb = new StringBuilder(profileQuery);
-            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            List<object> sqlParams = new List<object>();
+            List<string> conditions = new List<string>();
 
-            if (Boolean.TrueString.Equals(profileReq.isDonor))
+            if (profileReq.isDonor == true)
             {
-                qb.Append(" AND a.is_donor = true ");
+                conditions.Add("a.is_donor = @isDonor");
+                sqlParams.Add(new SqlParameter("@isDonor", true));
             }
-            if (Boolean.TrueString.Equals(profileReq.isInfluencer))
+            if (profileReq.isInfluencer == true)
             {
-                qb.Append(" AND a.is_influencer = true ");
+                conditions.Add("a.is_influencer = @isInfluencer");
+                sqlParams.Add(new SqlParameter("@isInfluencer", true));
             }
             if (profileReq.homeCenterId > 0)
             {
-                qb.Append(" AND a.home_center_id = @homeCenterId ");
-                parameters.Add("homeCenterId", profileReq.homeCenterId);
+                conditions.Add("a.home_center_id = @homeCenterId");
+                sqlParams.Add(new SqlParameter("@homeCenterId", profileReq.homeCenterId));
             }
             if (profileReq.relationshipId > 0)
             {
-                qb.Append(" AND a.relationship_id = @relationshipId ");
-                parameters.Add("relationshipId", profileReq.relationshipId);
+                conditions.Add("a.relationship_id = @relationshipId");
+                sqlParams.Add(new SqlParameter("@relationshipId", profileReq.relationshipId));
             }
             if (!string.IsNullOrEmpty(profileReq.gender))
             {
-                qb.Append(" AND a.gender = @gender ");
-                parameters.Add("gender", profileReq.gender);
+                conditions.Add("a.gender = @gender");
+                sqlParams.Add(new SqlParameter("@gender", profileReq.gender));
             }
             if (profileReq.ageGroup > 0)
             {
-                qb.Append(" AND " + _sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
+                conditions.Add(_sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
             }
             if (profileReq.influencedById > 0)
             {
-                qb.Append(" AND (c.id = @influencedById OR a.id = @influencedById) ");
-                parameters.Add("influencedById", profileReq.influencedById);
+                conditions.Add("(c.id = @influencedById OR a.id = @influencedById)");
+                sqlParams.Add(new SqlParameter("@influencedById", profileReq.influencedById));
             }
             if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
             {
-                qb.Append(" AND c.id IN (@influencerIds) ");
-                parameters.Add("influencerIds", profileReq.influencerIds);
+                string influencerIdParams = string.Join(",", profileReq.influencerIds);
+                conditions.Add($"c.id IN ({influencerIdParams})");
             }
 
-            var query = _context.profiles.FromSqlRaw(qb.ToString());
-            foreach (var parameter in parameters)
+            if (conditions.Any())
             {
-                query = query.AsQueryable().Where(p => EF.Property<object>(p, parameter.Key) == parameter.Value);
+                profileQuery += " AND " + string.Join(" AND ", conditions);
             }
-            List<ProfileModel> list = query.ToList();
-            return ObjectsToProfile(list.Select(p => new object[] { p.id, p.email, p.firstName, p.lastName }).ToList());
+
+            //var query = _context.profiles.FromSqlRaw(profileQuery, sqlParams.ToArray()).ToList();
+
+            //return query.Select(p => new ProfileDto
+            //{
+            //    id = p.donorId,
+            //    email = p.donorEmail,
+            //    firstName = p.donorFirstName,
+            //    lastName = p.donorLastName,
+            //    influencedById = p.influencerId,
+            //    InfluencerEmail = p.influencerEmail,
+            //    InfluencerFirstName = p.influencerFirstName,
+            //    InfluencerLastName = p.influencerLastName
+            //}).ToList();
+
+            List<ProfileDto> profiles = new List<ProfileDto>();
+
+            var conn = _context.Database.GetDbConnection();
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = profileQuery;
+                    cmd.CommandType = CommandType.Text;
+
+                    foreach (var param in sqlParams)
+                    {
+                        cmd.Parameters.Add(param);
+                    }
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            profiles.Add(new ProfileDto
+                            {
+                                id = reader["donorId"] != DBNull.Value ? Convert.ToInt32(reader["donorId"]) : 0,
+                                email = reader["donorEmail"]?.ToString(),
+                                firstName = reader["donorFirstName"]?.ToString(),
+                                lastName = reader["donorLastName"]?.ToString(),
+                                influencedById = reader["influencerId"] != DBNull.Value ? Convert.ToInt32(reader["influencerId"]) : 0,
+                                //InfluencerEmail = reader["influencerEmail"]?.ToString(),
+                                //InfluencerFirstName = reader["influencerFirstName"]?.ToString(),
+                                //InfluencerLastName = reader["influencerLastName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+
+            return profiles;
+
         }
+
 
         private List<ProfileDto> ObjectsToProfile(List<object[]> infData)
         {
