@@ -42,25 +42,37 @@ public class StatRepo : IStatRepo
     }
     public async Task<int> GetRecentInfluencerCountAsync(DateTime date)
     {
-        // Raw SQL query to get the count of influencers created after the specified date
-        var query = @"SELECT COUNT(id) FROM profiles WHERE is_influencer = true AND created_on >= @date";
+        if (_context.profiles == null)
+        {
+            throw new InvalidOperationException("Profiles DbSet is null.");
+        }
 
-        // Execute the query asynchronously and return the result
-        var result = await _context.Database.ExecuteSqlRawAsync(query, new MySqlParameter("@date", date));
-
-        return result;
+        return await _context.profiles
+            .Where(p => p.isInfluencer == true && p.createdOn >= date)
+            .CountAsync();
     }
-
     public async Task<int> GetRecentDonorCountAsync(DateTime date)
     {
-        // Raw SQL query to get the count of donors created after the specified date
-        var query = "SELECT COUNT(id) FROM profiles WHERE is_donor = 1 AND created_on >= @date";
+        if (_context.profiles == null)
+        {
+            throw new InvalidOperationException("Profiles DbSet is null.");
+        }
 
-        // Execute the query asynchronously and return the result
-        var result = await _context.Database.ExecuteSqlRawAsync(query, new MySqlParameter("@date", date));
-
-        return result;
+        return await _context.profiles
+            .Where(p => p.isDonor == true && p.createdOn >= date)
+            .CountAsync();
     }
+
+    //public async Task<int> GetRecentDonorCountAsync(DateTime date)
+    //{
+    //    // Raw SQL query to get the count of donors created after the specified date
+    //    var query = "SELECT COUNT(id) FROM profiles WHERE is_donor = true AND created_on >= @date";
+
+    //    // Execute the query asynchronously and return the result
+    //    var result = await _context.Database.ExecuteSqlRawAsync(query, new MySqlParameter("@date", date));
+
+    //    return result;
+    //}
     public List<Tuple<string, int>> GetDonorTimeSeries(DateTime date)
     {
         if (_context.DonorTimeSeriesResults == null)

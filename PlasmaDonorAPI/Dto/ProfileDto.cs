@@ -6,7 +6,7 @@ namespace NewPlasmaDonorsAPI.Dto
     {
         public long id { get; set; }
 
-        [Required]
+        //[Required]
         public string? firstName { get; set; }
 
         public string? lastName { get; set; }
@@ -20,7 +20,7 @@ namespace NewPlasmaDonorsAPI.Dto
 
         public string? phoneNumber { get; set; }
 
-        [Required]
+        //[Required]
         public string? email { get; set; }
 
         public bool? isDonor { get; set; }

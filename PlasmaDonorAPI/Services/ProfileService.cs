@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using DocumentFormat.OpenXml.Drawing;
+using DocumentFormat.OpenXml.Drawing.Charts;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Jose;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewPlasmaDonorsAPI.Data;
@@ -42,44 +44,46 @@ namespace NewPlasmaDonorsAPI.Services
             }
 
             var query = @"
-            SELECT a.email, a.first_name, a.last_name, a.phone_number, a.gender, a.dob,   
-                   a.is_donor, a.is_influencer, a.created_on, a.school_attended,  
-                   lang.id, lang.md_title,  
-                   race.id, race.md_title,  
-                   relationship.id, relationship.md_title,  
-                   occupation.id, occupation.md_title,  
-                   education.id, education.md_title,  
-                   addr.id, addr.address_line, addr.city, addr.state, addr.state_code,  
-                   addr.country, addr.country_code, addr.latitude, addr.longitude,   
-                   addr.full_address, addr.postal_code,  
-                   STRING_AGG(DISTINCT influencer.email, ',') AS influencedByList,  
-                   STRING_AGG(DISTINCT donors.email, ',') AS donorList,  
-                   SUM(infRelationship.md_score) AS infScore,  
-                   STRING_AGG(DISTINCT hobbies.md_title, ',') AS hobbiesList,  
-                   STRING_AGG(DISTINCT interest.md_title, ',') AS interestList,  
-                   STRING_AGG(DISTINCT influencer.id, ',') AS influencedByIds,  
-                   STRING_AGG(DISTINCT hobbies.id, ',') AS hobbieIds,  
-                   STRING_AGG(DISTINCT interest.id, ',') AS interestIds,  
-                   companyLocation.id, companyLocation.site_id,  
-                   a.relship_status, a.id  
-            FROM profiles a  
-            LEFT JOIN master_data lang ON a.language_id = lang.id  
-            LEFT JOIN master_data race ON a.race_id = race.id  
-            LEFT JOIN master_data relationship ON a.relationship_id = relationship.id  
-            LEFT JOIN master_data occupation ON a.occupation_id = occupation.id  
-            LEFT JOIN master_data education ON a.education_id = education.id  
-            LEFT JOIN company_locations companyLocation ON a.home_center_id = companyLocation.id  
-            LEFT JOIN address addr ON a.address_id = addr.id  
-            LEFT JOIN donar_influencer_map influencerMap ON a.id = influencerMap.profile_id  
-            LEFT JOIN profiles influencer ON influencerMap.influenced_by = influencer.id  
-            LEFT JOIN master_data infRelationship ON influencer.relationship_id = infRelationship.id  
-            LEFT JOIN donar_influencer_map donorMap ON donorMap.influenced_by = a.id  
-            LEFT JOIN profiles donors ON donors.id = donorMap.profile_id  
-            LEFT JOIN profile_md_map hobbiesMap ON a.id = hobbiesMap.profile_id  
-            LEFT JOIN master_data hobbies ON hobbiesMap.md_id = hobbies.id AND hobbies.md_type = 'hobbies'  
-            LEFT JOIN profile_md_map interestMap ON a.id = interestMap.profile_id  
-            LEFT JOIN master_data interest ON interestMap.md_id = interest.id AND interest.md_type = 'interests'  
-            WHERE a.id IS NOT NULL ";
+SELECT a.email, a.first_name, a.last_name, a.phone_number, a.gender, a.dob,   
+       a.is_donor, a.is_influencer, a.created_on, a.school_attended,  
+       lang.id, lang.md_title,  
+       race.id, race.md_title,  
+       relationship.id, relationship.md_title,  
+       occupation.id, occupation.md_title,  
+       education.id, education.md_title,  
+       addr.id, addr.address_line, addr.city, addr.state, addr.state_code,  
+       addr.country, addr.country_code, addr.latitude, addr.longitude,   
+       addr.full_address, addr.postal_code,  
+       GROUP_CONCAT(DISTINCT influencer.email SEPARATOR ',') AS influencedByList,  
+       GROUP_CONCAT(DISTINCT donors.email SEPARATOR ',') AS donorList,  
+       SUM(infRelationship.md_score) AS infScore,  
+       GROUP_CONCAT(DISTINCT hobbies.md_title SEPARATOR ',') AS hobbiesList,  
+       GROUP_CONCAT(DISTINCT interest.md_title SEPARATOR ',') AS interestList,  
+       GROUP_CONCAT(DISTINCT influencer.id SEPARATOR ',') AS influencedByIds,  
+       GROUP_CONCAT(DISTINCT hobbies.id SEPARATOR ',') AS hobbieIds,  
+       GROUP_CONCAT(DISTINCT interest.id SEPARATOR ',') AS interestIds,  
+       companyLocation.id, companyLocation.site_id,  
+       a.relship_status, a.id  
+FROM profiles a  
+LEFT JOIN master_data lang ON a.language_id = lang.id  
+LEFT JOIN master_data race ON a.race_id = race.id  
+LEFT JOIN master_data relationship ON a.relationship_id = relationship.id  
+LEFT JOIN master_data occupation ON a.occupation_id = occupation.id  
+LEFT JOIN master_data education ON a.education_id = education.id  
+LEFT JOIN company_locations companyLocation ON a.home_center_id = companyLocation.id  
+LEFT JOIN address addr ON a.address_id = addr.id  
+LEFT JOIN donar_influencer_map influencerMap ON a.id = influencerMap.profile_id  
+LEFT JOIN profiles influencer ON influencerMap.influenced_by = influencer.id  
+LEFT JOIN master_data infRelationship ON influencer.relationship_id = infRelationship.id  
+LEFT JOIN donar_influencer_map donorMap ON donorMap.influenced_by = a.id  
+LEFT JOIN profiles donors ON donors.id = donorMap.profile_id  
+LEFT JOIN profile_md_map hobbiesMap ON a.id = hobbiesMap.profile_id  
+LEFT JOIN master_data hobbies ON hobbiesMap.md_id = hobbies.id AND hobbies.md_type = 'hobbies'  
+LEFT JOIN profile_md_map interestMap ON a.id = interestMap.profile_id  
+LEFT JOIN master_data interest ON interestMap.md_id = interest.id AND interest.md_type = 'interests'  
+WHERE a.id IS NOT NULL  
+"; 
+
 
             var sb = new StringBuilder(query);
 
@@ -119,8 +123,76 @@ namespace NewPlasmaDonorsAPI.Services
                 sb.Append($" AND {sqlUtilService.AgeGroupQuery(profileReq.ageGroup)}");
             }
 
+            sb.Append("GROUP BY a.id");
         
             var results = _context.Database.SqlQuery<ProfileDto>($"{sb.ToString()}").ToList();
+            var profiles = results.Select(profile => new ProfileDto
+            {
+                email = profile.email,
+                firstName = profile.firstName,
+                lastName = profile.lastName,
+                name = $"{profile.firstName} {profile.lastName}",
+                phoneNumber = profile.phoneNumber,
+                gender = profile.gender,
+                dob = profile.dob,  // Handle nullable DateTime
+                isDonor = profile.isDonor,
+                isInfluencer = profile.isInfluencer,
+                createdOn = profile.createdOn,  // Handle nullable DateTime
+                schoolAttended = profile.schoolAttended,
+                languageId = profile.languageId,
+                language = profile.language,
+                raceId = profile.raceId,
+                race = profile.race,
+                relationshipId = profile.relationshipId,
+                relationship = profile.relationship,
+                occupationId = profile.occupationId,
+                occupation = profile.occupation,
+                educationId = profile.educationId,
+                education = profile.education,
+                addressId = profile.addressId,
+                addressLine1 = profile.addressLine1,
+                city = profile.city,
+                state = profile.state,
+                stateCode = profile.stateCode,
+                country = profile.country,
+                countryCode = profile.countryCode,
+                latitude = profile.latitude,
+                longitude = profile.longitude,
+                fullAddress = profile.fullAddress,
+                postalCode = profile.postalCode,
+                influencers = profile.influencers,
+                infScore = profile.infScore,
+                hobbieStr = profile.hobbieStr,
+                interestStr = profile.interestStr,
+                homeCenterId = profile.homeCenterId,
+                homeCenter = profile.homeCenter,
+                relshipStatus = profile.relshipStatus,
+                id = profile.id,
+            }).ToList();
+
+            // **Parse IDs from CSV Strings**
+            foreach (var profile in profiles)
+            {
+                var infIds = profile.influencers;
+                var hobbies = profile.hobbieStr;
+                var interests = profile.interestStr;
+
+                if (!string.IsNullOrEmpty(infIds))
+                {
+                    profile.influencerIds = infIds.Split(',').Select(i => long.Parse(i.Trim())).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(hobbies))
+                {
+                    profile.hobbiesIds = hobbies.Split(',').Select(i => long.Parse(i.Trim())).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(interests))
+                {
+                    profile.interestIds = interests.Split(',').Select(i => long.Parse(i.Trim())).ToList();
+                }
+            }
+
 
             return new ResInfo
             {
