@@ -1,5 +1,7 @@
 ﻿using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Models;
+using NewPlasmaDonorsAPI.utils;
+using NPOI.SS.Formula.Functions;
 
 namespace NewPlasmaDonorsAPI.mapper
 {
@@ -11,7 +13,7 @@ namespace NewPlasmaDonorsAPI.mapper
 
             return new ProfileDto
             {
-                dob = model.dob,
+                dob = DateUtils.ToShortString(NameUtils.DateVal(model.dob)),
                 email = model.email,
                 firstName = model.firstName,
                 lastName = model.lastName,
@@ -29,7 +31,7 @@ namespace NewPlasmaDonorsAPI.mapper
 
             return new ProfileModel
             {
-                dob = info.dob,
+                dob = NameUtils.DateVal(info.dob),
                 email = info.email,
                 firstName = info.firstName,
                 lastName = info.lastName,

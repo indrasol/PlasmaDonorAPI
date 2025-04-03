@@ -21,13 +21,13 @@ namespace NewPlasmaDonorsAPI.Controllers
     {
         private readonly ProfileService _profileService;
         private readonly MdService _mdService;
-        private readonly ProfileImportService profileImportService;
+        private readonly ProfileImportService _profileImportService;
         private readonly IWebHostEnvironment _env;
-        public ProfileController(ProfileService profileService, MdService mdService,ProfileImportService profileImportService, ProfileImportService ProfileImportService, IWebHostEnvironment env)
+        public ProfileController(ProfileService profileService, MdService mdService, ProfileImportService ProfileImportService, IWebHostEnvironment env)
         {
             _profileService = profileService;
             _mdService = mdService;
-            ProfileImportService=profileImportService;
+            _profileImportService=ProfileImportService;
             _env = env;
         }
         [HttpPost("create")]
@@ -135,8 +135,8 @@ namespace NewPlasmaDonorsAPI.Controllers
             try
             {
                 // Call your service to import profiles
-                var result = await profileImportService.ImportProfiles(xlFile);
-
+                var result = await _profileImportService.ImportProfiles(xlFile);
+                
                 if (result.Status)
                 {
                     return Ok(result); // Return a success response
@@ -157,7 +157,7 @@ namespace NewPlasmaDonorsAPI.Controllers
         public IActionResult DownloadTemplate()
         {
             try
-            {
+            { 
 
                 string filePath = Path.Combine(_env.WebRootPath,"files","donor_profile_template.xlsx");
                 FileInfo file = new FileInfo(filePath);

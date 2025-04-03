@@ -2,6 +2,10 @@
 using NewPlasmaDonorsAPI.Data;
 using NewPlasmaDonorsAPI.Models;
 using NewPlasmaDonorsAPI.Dto;
+using NewPlasmaDonorsAPI.utils;
+using NPOI.SS.Formula.Functions;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace PlasmaDonorAPI.Repositories
 {
@@ -93,12 +97,12 @@ namespace PlasmaDonorAPI.Repositories
 
         public async Task<List<ProfileModel>> GetAllInfluencersByHomeCenterIdAsync(int hcId)
         {
-            return await _context.profiles?.Where(p => p.isInfluencer==true && p.homeCenterId == hcId).ToListAsync() ?? new List<ProfileModel>();
+            return await _context.profiles?.Where(p => p.isInfluencer == true && p.homeCenterId == hcId).ToListAsync() ?? new List<ProfileModel>();
         }
 
-        public  List<ProfileModel> getAllInfluencers()
+        public List<ProfileModel> getAllInfluencers()
         {
-            return  _context.profiles?.Where(p => p.isInfluencer == true).ToList() ?? new List<ProfileModel>();
+            return _context.profiles?.Where(p => p.isInfluencer == true).ToList() ?? new List<ProfileModel>();
         }
 
         //public async Task<List<ProfileModel>> GetAllProfilesAsync()
@@ -119,22 +123,151 @@ namespace PlasmaDonorAPI.Repositories
 
         //    return result;
         //}
-        public List<ProfileDto> findAllProfiles()
-    
-        {
-            string query = profileQuery + grpBy;  // Combine the query parts dynamically
 
-            return _context.profiles
-                .FromSqlRaw(query)
-                .Select(p => new ProfileDto
+        public List<ProfileDto> findAllProfiles()
+        {
+            List<ProfileDto> profiles = new List<ProfileDto>();
+
+            var conn = _context.Database.GetDbConnection();
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
                 {
-                    email=p.email,
-                    firstName= p.firstName,
-                    lastName=p.lastName,
-                    phoneNumber=p.phoneNumber
-                })
-                .ToList();
+                    cmd.CommandText = profileQuery + grpBy;
+                    cmd.CommandType = CommandType.Text;
+
+                    var reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        ProfileDto profile = new ProfileDto
+                        {
+                            id = reader["ProfileId"] != DBNull.Value ? Convert.ToInt64(reader["ProfileId"]) : (long?)null,
+                            firstName = reader["first_name"]?.ToString(),
+                            lastName = reader["last_name"]?.ToString(),
+                            dob = DateUtils.ToShortString(NameUtils.DateVal(reader["dob"])),
+                            gender = reader["gender"]?.ToString(),
+                            phoneNumber = reader["phone_number"]?.ToString(),
+                            email = reader["email"]?.ToString(),
+                            isDonor = reader["is_donor"] != DBNull.Value && Convert.ToBoolean(reader["is_donor"]),
+                            isInfluencer = reader["is_influencer"] != DBNull.Value && Convert.ToBoolean(reader["is_influencer"]),
+                            createdOn = DateUtils.ToShortString(NameUtils.DateVal(reader["created_on"])),
+                            schoolAttended = reader["school_attended"]?.ToString(),
+
+                            language = reader["Language"]?.ToString(),
+                            race = reader["Race"]?.ToString(),
+                            relationship = reader["Relationship"]?.ToString(),
+                            occupation = reader["Occupation"]?.ToString(),
+                            education = reader["Education"]?.ToString(),
+
+                            address = reader["Address"]?.ToString(),
+                            addressLine1 = reader["Address"]?.ToString(),
+                            city = reader["city"]?.ToString(),
+                            state = reader["state"]?.ToString(),
+                            country = reader["country"]?.ToString(),
+                            postalCode = reader["postal_code"]?.ToString(),
+                            latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : (double?)null,
+                            longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : (double?)null,
+
+                            influencers = reader["InfluencedByList"]?.ToString(),
+                            influencedBy = reader["InfluencedByIds"]?.ToString(),
+                            interestStr = reader["InterestList"]?.ToString(),
+                            hobbieStr = reader["HobbiesList"]?.ToString(),
+
+                            infScore = reader["InfScore"] != DBNull.Value ? Convert.ToDouble(reader["InfScore"]) : 0,
+
+                            homeCenterId = reader["CompanyLocationId"] != DBNull.Value ? Convert.ToInt64(reader["CompanyLocationId"]) : (long?)null,
+                            homeCenter = reader["SiteId"]?.ToString(),
+
+                            relshipStatus = reader["RelationshipStatus"]?.ToString()
+                        };
+                        profiles.Add(profile);
+                    }
+                    reader.Close();
+                }
+            }
+
+            return profiles;
         }
+
+
+        //public List<ProfileDto> findAllProfiles()
+
+        //{
+        //    string query = profileQuery + grpBy;  // Combine the query parts dynamically
+
+        //    return _context.profiles
+        //        .FromSqlRaw(query)
+        //        .Select(t => new ProfileDto
+        //        {
+        //            //email=p.email,
+        //            //firstName= p.firstName,
+        //            //lastName=p.lastName,
+        //            //phoneNumber=p.phoneNumber
+
+        //            id = t.id,
+        //            phoneNumber = t.phoneNumber,
+        //            email = t.email,
+        //            firstName = t.firstName,
+        //            lastName = t.lastName,
+        //            name = NameUtils.Appender(" ", t.firstName, t.lastName),
+        //            dob = t.dob,
+        //            isDonor = t.isDonor,
+        //            isInfluencer = t.isInfluencer,
+        //            //age = t.age,
+        //            //gender = t.gender,
+        //            //city = t.city,
+        //            //state = t.state,
+
+        //            createdOn = t.createdOn,
+        //            infScore = t.infScore,
+        //            schoolAttended = t.schoolAttended,
+        //            //ageGroup = null, // Calculate if required
+        //            // = null, // Map if available
+        //            //children = new List<ProfileDto>() // Handle child profiles if needed
+        //            //influencerIds = t.influencedByIds?.Split(',').Select(long.Parse).ToList(),
+        //            //influencers = t.InfluencedByList,
+        //            //education = t.education,
+        //            //educationId = t.educationId,
+        //            //realtionshipScore = t.realtionshipScore,
+        //            //realtionshipScoreId = t.realtionshipScoreId,
+
+        //            //fullAddress = t.address,
+        //            //addressLine1 = t.addressLine,
+
+        //            //stateCode = null, // Map if available
+        //            //country = t.country,
+        //            //countryCode = null, // Map if available
+        //            //postalCode = t.postalCode,
+        //            //latitude = t.latitude,
+        //            //longitude = t.longitude,
+
+        //            //interests = t.InterestList?.Split(',').ToList(),
+        //            //interestStr = t.interestStr,
+        //            //interestIds = t.InterestIds?.Split(',').Select(long.Parse).ToList(),
+        //            //hobbies = t.HobbiesList?.Split(',').ToList(),
+        //            //hobbieStr = t.hobbieStr,
+        //            //hobbiesIds = t.HobbieIds?.Split(',').Select(long.Parse).ToList(),
+        //            //homeCenterId = t.CompanyLocationId,
+        //            //homeCenter = t.homeCenter,
+
+        //            //relshipStatus = t.relationship,
+        //            //occupation = t.occupation,
+        //            //occupationId = t.occupationId,
+        //            //relationship = t.relationship,
+        //            //relationshipId = t.relationshipId,
+        //            //race = t.race,
+        //            //raceId = t.raceId,
+        //            //address = t.address,
+        //            //addressId = t.addressId,
+        //            //language = t.language,
+        //            //languageId = t.languageId,
+        //            //status = t.status,
+        //            //influencedBy = t.influencedBy,
+
+        //        })
+        //        .ToList();
+        //}
         public async Task<List<ProfileModel>> GetAllInfluencersDetailedAsync()
         {
             return await _context.profiles

@@ -12,7 +12,8 @@ namespace NewPlasmaDonorsAPI.Services
         private readonly ExcelProcessor _excelProcessor;
         private readonly ProfileService _profileService;
         private readonly ProfileValidator _profileValidator;
-
+        private readonly ILogger<ProfileImportService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public ProfileImportService(ExcelProcessor excelProcessor, ProfileService profileService,
             ProfileValidator profileValidator, ILogger<ProfileImportService> logger, IHttpContextAccessor httpContextAccessor)
             : base(logger, httpContextAccessor)
@@ -20,6 +21,8 @@ namespace NewPlasmaDonorsAPI.Services
             _excelProcessor = excelProcessor;
             _profileService = profileService;
             _profileValidator = profileValidator;
+            _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<ResInfo> ImportProfiles(IFormFile xlFile)

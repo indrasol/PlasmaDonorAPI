@@ -122,10 +122,10 @@ namespace NewPlasmaDonorsAPI.Services
                                     name = $"{reader["first_name"]} {reader["last_name"]}",
                                     phoneNumber = reader["phone_number"].ToString(),
                                     gender = reader["gender"].ToString(),
-                                    dob = reader["dob"] != DBNull.Value ? (DateTime?)reader["dob"] : null,
+                                    dob = DateUtils.ToShortString(NameUtils.DateVal(reader["dob"])),
                                     isDonor = reader["is_donor"] != DBNull.Value ? Convert.ToBoolean(reader["is_donor"]) : (bool?)null,
                                     isInfluencer = reader["is_influencer"] != DBNull.Value ? Convert.ToBoolean(reader["is_influencer"]) : (bool?)null,
-                                    createdOn = reader["created_on"] != DBNull.Value ? (DateTime?)reader["created_on"] : null,
+                                    createdOn = DateUtils.ToShortString(NameUtils.DateVal(reader["created_on"])),
                                     schoolAttended = reader["school_attended"].ToString(),
                                     languageId = reader["languageId"] != DBNull.Value ? (long?)reader["languageId"] : null,
                                     language = reader["language"].ToString(),
@@ -138,6 +138,8 @@ namespace NewPlasmaDonorsAPI.Services
                                     educationId = reader["educationId"] != DBNull.Value ? (long?)reader["educationId"] : null,
                                     education = reader["education"].ToString(),
                                     addressId = reader["addressId"] != DBNull.Value ? (long?)reader["addressId"] : null,
+                                    address = reader["address_line"].ToString(),
+                                    addressLine1 = reader["address_line"].ToString(),
                                     city = reader["city"].ToString(),
                                     state = reader["state"].ToString(),
                                     country = reader["country"].ToString(),
@@ -642,47 +644,62 @@ namespace NewPlasmaDonorsAPI.Services
                 {
                     var profileDto = new ProfileDto
                     {
-                        email = t.email,
-                        firstName = t.firstName,
-                        lastName = t.lastName,
-                        phoneNumber = NameUtils.StrVal(t.phoneNumber),
+                        email = NameUtils.StrVal(t.email),
+                        firstName = NameUtils.StrVal(t.firstName),
+                        lastName = NameUtils.StrVal(t.lastName),
                         name = NameUtils.Appender(" ", NameUtils.StrVal(t.firstName), NameUtils.StrVal(t.lastName)),
-                        //gender = NameUtils.Gender(NameUtils.StrVal(t.gender)),
-                        //dob = DateUtils.ToShortString(NameUtils.DateVal(t.dob)),
-                        //isDonor = NullUtils.IsValid(NameUtils.BoolVal(t.isDonor)) ? NameUtils.BoolVal(t.isDonor) : false,
-                        //isInfluencer = NullUtils.IsValid(NameUtils.BoolVal(t.isInfluencer)) ? NameUtils.BoolVal(t.isInfluencer) : false,
-                        //createdOn = DateUtils.ToShortString(NameUtils.DateVal(t.createdOn)),
-                        //schoolAttended = NameUtils.StrVal(t.schoolAttended),
-                        //languageId = NameUtils.LongVal(t.languageId),
-                        //language = NameUtils.StrVal(t.language),
-                        //raceId = NameUtils.LongVal(t.raceId),
-                        //race = NameUtils.StrVal(t.race),
-                        //relationshipId = NameUtils.LongVal(t.relationshipId),
-                        //relationship = NameUtils.StrVal(t.relationship),
-                        //occupationId = NameUtils.LongVal(t.occupationId),
-                        //occupation = NameUtils.StrVal(t.occupation),
-                        //educationId = NameUtils.LongVal(t.educationId),
-                        //education = NameUtils.StrVal(t.education),
-                        //addressId = NameUtils.LongVal(t.addressId),
-                        //addressLine1 = NameUtils.StrVal(t.addressLine1),
-                        //city = NameUtils.StrVal(t.city),
-                        //state = NameUtils.StrVal(t.state),
-                        //stateCode = NameUtils.StrVal(t.stateCode),
-                        //country = NameUtils.StrVal(t.country),
-                        //countryCode = NameUtils.StrVal(t.countryCode),
-                        //latitude = NameUtils.DoubleVal(t.latitude),
-                        //longitude = NameUtils.DoubleVal(t.longitude),
-                        //fullAddress = NameUtils.StrVal(t.fullAddress),
-                        //postalCode = NameUtils.StrVal(t.postalCode),
-                        //influencers = NameUtils.StrVal(t.influencers),
-                        //infScore = NameUtils.DoubleVal(t.infScore),
-                        //hobbieStr = NameUtils.StrVal(t.hobbieStr),
-                        //interestStr = NameUtils.StrVal(t.interestStr),
-                        //homeCenterId = NameUtils.LongVal(t.homeCenterId),
-                        //homeCenter = NameUtils.StrVal(t.homeCenter),
-                        //relshipStatus = NameUtils.StrVal(t.relshipStatus),
-                        id = t.id,
+                        phoneNumber = NameUtils.StrVal(t.phoneNumber),
+                        gender = NameUtils.Gender(NameUtils.StrVal(t.gender)),
+
+                        // Date Parsing Logic
+                        dob = t.dob,
+                        createdOn = t.createdOn,
+
+                        isDonor = NullUtils.IsValid(NameUtils.BoolVal(t.isDonor)) ? NameUtils.BoolVal(t.isDonor) : false,
+                        isInfluencer = NullUtils.IsValid(NameUtils.BoolVal(t.isInfluencer)) ? NameUtils.BoolVal(t.isInfluencer) : false,
+
+                        schoolAttended = NameUtils.StrVal(t.schoolAttended),
+
+                        languageId = NameUtils.LongVal(t.languageId),
+                        language = NameUtils.StrVal(t.language),
+
+                        raceId = NameUtils.LongVal(t.raceId),
+                        race = NameUtils.StrVal(t.race),
+
+                        relationshipId = NameUtils.LongVal(t.relationshipId),
+                        relationship = NameUtils.StrVal(t.relationship),
+
+                        occupationId = NameUtils.LongVal(t.occupationId),
+                        occupation = NameUtils.StrVal(t.occupation),
+
+                        educationId = NameUtils.LongVal(t.educationId),
+                        education = NameUtils.StrVal(t.education),
+
+                        addressId = NameUtils.LongVal(t.addressId),
+                        addressLine1 = NameUtils.StrVal(t.addressLine1),
+                        city = NameUtils.StrVal(t.city),
+                        state = NameUtils.StrVal(t.state),
+                        stateCode = NameUtils.StrVal(t.stateCode),
+                        country = NameUtils.StrVal(t.country),
+                        countryCode = NameUtils.StrVal(t.countryCode),
+
+                        latitude = NameUtils.DoubleVal(t.latitude),
+                        longitude = NameUtils.DoubleVal(t.longitude),
+                        fullAddress = NameUtils.StrVal(t.fullAddress),
+                        postalCode = NameUtils.StrVal(t.postalCode),
+                        influencers = NameUtils.StrVal(t.influencers),
+
+                        infScore = NameUtils.DoubleVal(t.infScore),
+                        hobbieStr = NameUtils.StrVal(t.hobbieStr),
+                        interestStr = NameUtils.StrVal(t.interestStr),
+
+                        homeCenterId = NameUtils.LongVal(t.homeCenterId),
+                        homeCenter = NameUtils.StrVal(t.homeCenter),
+                        relshipStatus = NameUtils.StrVal(t.relshipStatus),
+                        id = NameUtils.LongVal(t.id)
                     };
+
+
 
                     // Convert CSV strings to lists
                     //string infIds = NameUtils.StrVal(t.infIds);

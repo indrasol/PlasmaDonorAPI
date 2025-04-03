@@ -20,6 +20,7 @@ using PlasmaDonorAPI.Dto;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Data.SqlClient;
+using MySqlConnector;
 using System.Data;
 
 namespace NewPlasmaDonorsAPI.Services

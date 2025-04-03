@@ -4,6 +4,7 @@ using NewPlasmaDonorsAPI.Dto;
 using NewPlasmaDonorsAPI.Dto.Dashboard;
 using Serilog;
 using System.Linq;
+using NewPlasmaDonorsAPI.utils;
 
 namespace NewPlasmaDonorsAPI.Services.excel
 {
@@ -35,8 +36,11 @@ namespace NewPlasmaDonorsAPI.Services.excel
             using (var stream = new MemoryStream())
             {
                 xlFile.CopyTo(stream);
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
                 using (var package = new ExcelPackage(stream))
                 {
+
                     var worksheet = package.Workbook.Worksheets[0]; // Assume first worksheet
                     var headers = GetHeaderMap(worksheet);
 
@@ -49,7 +53,7 @@ namespace NewPlasmaDonorsAPI.Services.excel
                             firstName = GetCellValueAsString(row[headers["first_name"], 1]),
                             lastName = GetCellValueAsString(row[headers["last_name"], 1]),
                             gender = GetCellValueAsString(row[headers["gender"], 1]),
-                            dob = ConvertToDate(GetCellValueAsString(row[headers["dob"], 1])),
+                            dob = DateUtils.ToShortString(ConvertToDate(GetCellValueAsString(row[headers["dob"], 1]))),
                             phoneNumber = GetCellValueAsString(row[headers["phone_number"], 1]),
                             isDonor = ConvertToBoolean(GetCellValueAsString(row[headers["is_donor"], 1])),
                             isInfluencer = ConvertToBoolean(GetCellValueAsString(row[headers["is_influencer"], 1])),

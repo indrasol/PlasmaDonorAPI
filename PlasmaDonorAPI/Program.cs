@@ -8,6 +8,8 @@ using PlasmaDonorAPI.Repositories;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
+using NewPlasmaDonorsAPI.Services.excel;
+using NewPlasmaDonorsAPI.Services.Validator;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +68,8 @@ builder.Services.AddScoped<MdService>();
 builder.Services.AddSingleton<IJwtService, JwtService>(_ => new JwtService(jwtSecret));
 builder.Services.AddScoped<MdRepository>();
 builder.Services.AddScoped<ProfileImportService>();
+builder.Services.AddScoped<ExcelProcessor>();
+builder.Services.AddScoped<ProfileValidator>(); // Required dependency
 builder.Services.AddScoped<StatRepo>();
 builder.Services.AddScoped<IStatRepo, StatRepo>();
 builder.Services.AddScoped<StatService>();
@@ -74,6 +78,7 @@ builder.Services.AddScoped<NewPlasmaDonorsAPI.Services.excel.ExcelProcessor>();
 builder.Services.AddScoped<SqlUtilService>();
 builder.Services.AddScoped<NewPlasmaDonorsAPI.Services.Validator.ProfileValidator>();
 builder.Services.AddScoped<BaseService>();
+builder.Services.AddScoped<ILogger<ProfileImportService>, Logger<ProfileImportService>>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
 
