@@ -82,6 +82,7 @@ namespace NewPlasmaDonorsAPI.Models
         [StringLength(255)]
         public string? Status { get; set; }
 
+
         [NotMapped]
         public double infScore { get; set; }
 

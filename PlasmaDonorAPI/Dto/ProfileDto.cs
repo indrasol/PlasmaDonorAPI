@@ -7,6 +7,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public long? id { get; set; }
 
         //[Required]
+        public bool isExpanded { get; set; } = false;
         public string? firstName { get; set; }
 
         public string? lastName { get; set; }

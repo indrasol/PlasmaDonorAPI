@@ -8,6 +8,7 @@ using NewPlasmaDonorsAPI.Dto.Dashboard;
 using Microsoft.Data.SqlClient;
 using StructureMap;
 using PlasmaDonorAPI.Dto;
+using System.Data;
 public class StatRepo : IStatRepo
 {
     private readonly AppDbContext _context;
@@ -382,16 +383,62 @@ public class StatRepo : IStatRepo
         return result.Select(x => new Tuple<long, long?, string, string, string, string>(
             x.DonorId, x.InfId, x.DonorEmail, x.InfluencerEmail, x.DonorFirstName, x.DonorLastName)).ToList();
     }
-    public async Task<List<Tuple<long,double>>> GetScoreByInfIdsAsync(List<long?> infIds)
-    {
-        if (infIds == null || !infIds.Any())
-            return new List<Tuple<long, double>>();
 
-        return await _context.profiles
-            .Where(s => infIds.Contains(s.id))
-            .Select(s => new Tuple<long, double>(s.id, s.infScore))
-            .ToListAsync();
+
+    public async Task<List<Tuple<long, double>>> GetScoreByInfIdsAsync(List<long?> infIds)
+    {
+        var result = new List<Tuple<long, double>>();
+
+        if (infIds == null || !infIds.Any())
+            return result;
+
+        var idList = string.Join(",", infIds.Where(i => i.HasValue).Select(i => i.Value));
+
+        var sql = $@"
+        SELECT b.id, SUM(d.md_score) AS infScore
+        FROM donar_influencer_map a
+        LEFT JOIN profiles b ON b.id = a.influenced_by
+        LEFT JOIN profiles c ON c.id = a.profile_id
+        LEFT JOIN master_data d ON c.relationship_id = d.id
+        WHERE a.influenced_by IN ({idList})
+        GROUP BY b.id
+        ORDER BY infScore DESC";
+
+        using (var connection = _context.Database.GetDbConnection())
+        {
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = sql;
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var id = reader.GetInt64(0);          
+                        var infScore = reader.IsDBNull(1) ? 0 : reader.GetDouble(1);  
+                        result.Add(new Tuple<long, double>(id, infScore));
+                    }
+                }
+            }
+        }
+
+        return result;
     }
+
+
+    //public async Task<List<Tuple<long, double>>> GetScoreByInfIdsAsync(List<long?> infIds)
+    //{
+    //    if (infIds == null || !infIds.Any())
+    //        return new List<Tuple<long, double>>();
+
+    //    return await _context.profiles
+    //        .Where(s => infIds.Contains(s.id))
+    //        .Select(s => new Tuple<long, double>(s.id, s.infScore))
+    // .ToListAsync();
+
+    //}
 }
 
 

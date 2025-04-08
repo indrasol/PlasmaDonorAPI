@@ -228,81 +228,7 @@ namespace NewPlasmaDonorsAPI.Services
             return obj != null && long.TryParse(obj.ToString(), out long value) ? value : 0;
         }
 
-        //public async Task<List<ProfileDto>> GetDonorInfTreeDataAsync(int? paramInfId, TreeUtils TreeProcessor)
-        //{
-        //    ProfileDto root = null;
-        //    if (paramInfId.HasValue && paramInfId < 0)
-        //    {
-        //        paramInfId = null;
-        //    }
-
-        //    if (paramInfId.HasValue)
-        //    {
-        //        var pm = await _profileRepository.GetByIdAsync(paramInfId.Value);
-        //        if (pm != null)
-        //        {
-        //            root = new ProfileDto
-        //            {
-        //                id = pm.id,
-        //                name = $"{pm.firstName} {pm.lastName}".Trim(),
-        //                email = pm.email
-        //            };
-        //        }
-        //    }
-
-        //    List<Tuple<long, long?, string, string, string, string>> infData;
-        //    bool isForOneInf = false;
-
-        //    if (!paramInfId.HasValue)
-        //    {
-        //        var profileList =   _statRepo.GetDonorInfDataAsync(); // Await if async
-        //        infData = profileList.Select(p =>
-        //            Tuple.Create(p.id, (long?)p.influencedById, p.name, p.email, "", "")
-        //        ).ToList();
-        //    }
-        //    else
-        //    {
-        //        isForOneInf = true;
-        //        var tempData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
-        //        //infData = await _statRepo.GetDonorInfDataByInfIdAsync(new List<int> { paramInfId.Value });
-        //        infData = tempData.Select(t =>
-        //        Tuple.Create(t.Item1, (long?)t.Item2, t.Item3, t.Item4, t.Item5, t.Item6)
-        //         ).ToList();
-        //    }
-
-
-        //    var profiles = TupleToProfile(infData);
-
-        //    if (isForOneInf)
-        //    {
-        //        var pIds = profiles.Select(p => (int)p.id).ToList();
-        //        infData = await _statRepo.GetDonorInfDataByInfIdAsync(pIds);
-        //        profiles.AddRange(TupleToProfile(infData));
-        //    }
-
-        //    var profileIds = profiles.Select(p => p.influencedById).ToList();
-        //    //var scoreList = await _statRepo.GetScoreByInfIdsAsync(profileIds);
-        //    //var scoreMap = scoreList.ToDictionary(t => t.Item1, t => t.Item1);
-
-        //    profiles.ForEach(p =>
-        //    {
-        //        if (scoreMap.ContainsKey(p.id))
-        //        {
-        //            p.name += $" ({scoreMap[p.id]})";
-        //        }
-        //    });
-
-        //    if (root != null && scoreMap.ContainsKey(root.id))
-        //    {
-        //        root.name += $" ({scoreMap[root.id]})";
-        //    }
-
-        //    var rootProfiles = TreeProcessor.Process(profiles, root);
-        //    rootProfiles = rootProfiles.OrderByDescending(w => w.children.Count).Take(5).ToList();
-
-        //    return rootProfiles;
-        //}
-
+        
         private List<ProfileDto> TupleToProfile(List<Tuple<long, long?, string, string, string, string>> infData)
         {
             return infData.Select(t => new ProfileDto
@@ -381,6 +307,9 @@ namespace NewPlasmaDonorsAPI.Services
                 {
                     qb.Append($" AND a.home_center_id = {profileReq.homeCenterId}");
                     parameters.Add(profileReq.homeCenterId);
+                    //qb.Append(" AND a.home_center_id = @homeCenterId");
+                    //parameters.Add(new MySqlParameter("@homeCenterId", profileReq.homeCenterId));
+
                 }
 
                 if (profileReq.relationshipId > 0)
@@ -390,8 +319,14 @@ namespace NewPlasmaDonorsAPI.Services
                 }
                 if (!string.IsNullOrEmpty(profileReq.gender))
                 {
-                    qb.Append($" AND a.gender = {profileReq.gender}");
-                    parameters.Add(profileReq.gender);
+                    //qb.Append($" AND a.gender = {profileReq.gender}");
+                    //parameters.Add(profileReq.gender);
+                    //qb.Append(" AND a.gender = '{profileReq.gender}'");
+
+                    qb.Append("AND gender = @Gender");
+                    parameters.Add(new MySqlParameter("@Gender", profileReq.gender));
+
+
                 }
                 if (profileReq.ageGroup > 0)
                 {
@@ -429,7 +364,7 @@ namespace NewPlasmaDonorsAPI.Services
 
                 Console.WriteLine("Query::" + qb.ToString());
 
-                // Execute the query with parameters
+                //Execute the query with parameters
                 return _context.Database
                     .SqlQueryRaw<KpiInfo>(qb.ToString())
                     .ToList();
@@ -498,9 +433,8 @@ namespace NewPlasmaDonorsAPI.Services
             }
 
             return Success(dbsInfo);
+
         }
-
-
 
         public ResInfo InfDetailsData(ProfileDto pDto)
         {
@@ -513,24 +447,25 @@ namespace NewPlasmaDonorsAPI.Services
             return res;
         }
 
+
         public async Task<ResInfo> InfluencerTreeData(ProfileDto profileReq)
         {
             if (profileReq == null) return Success(new List<ProfileDto>());
 
             List<ProfileDto> profiles = getProfileList(profileReq);
 
-            if (profileReq.influencedById > 0)
+            if (profileReq?.influencedById != null)
             {
                 List<long> pIds = profiles
-                    .Where(p => p.id != profileReq.influencedById)
+                    .Where(p => p.id != null && profileReq.influencedById != null && p.id != profileReq.influencedById)
                     .Select(p => (long)p.id)
                     .ToList();
 
-                profiles.AddRange(getProfileList(new ProfileDto { influencerIds = pIds }));
+                getProfileList(new ProfileDto { influencerIds = pIds });
             }
 
             List<long?> profileIds = profiles
-                .Where(p => p.influencedById > 0)
+                .Where(p => p.id != null)
                 .Select(p => p.influencedById)
                 .ToList();
 
@@ -539,82 +474,37 @@ namespace NewPlasmaDonorsAPI.Services
 
             profiles.ForEach(p =>
             {
-                if (scoreMap.ContainsKey((long)p.id))
+                long profileId = (long)p.id;
+                //double score = (double)p.infScore;
+                if (scoreMap.TryGetValue(profileId, out double score))
                 {
-                    p.name += $" ({scoreMap[(long)p.id]})";
+                    p.name = p.name ?? $"{p.firstName} {p.lastName}";
+                    p.name += $" ({score})";
+                    p.infScore = score;
+                    //p.name += $" ({scoreMap[(long)p.id]})";
                 }
             });
 
             var rootProfiles = _treeUtils.Process(profiles, null)
+                 .Select(p => new ProfileDto
+                 {
+                     id = p.id,
+                     name = p.name,
+                     email = p.email,
+                     firstName = p.firstName,
+                     lastName = p.lastName,
+                     influencedById = p.influencedById,
+                     interests = p.interests,
+                     infScore = p.infScore,
+                     children = p.children ?? new List<ProfileDto>(),
+                     isExpanded = (p.infScore > 0 && (p.children?.Count ?? 0) > 0)
+                     
+                 })
                 .OrderByDescending(w => w.children.Count)
                 .Take(5)
                 .ToList();
-
             return Success(rootProfiles);
         }
-
-        //private List<ProfileDto> getProfileList(ProfileDto profileReq)
-        //{
-        //    if (profileReq == null)
-        //    {
-        //        profileReq = new ProfileDto();
-        //    }
-
-        //    String profileQuery = "SELECT a.id, c.id, a.email, c.email, a.first_name, a.last_name, c.first_name, c.last_name " +
-        //                          "FROM profiles AS a " +
-        //                          "LEFT JOIN donar_influencer_map AS b ON b.profile_id = a.id " +
-        //                          "LEFT JOIN profiles AS c ON b.influenced_by = c.id " +
-        //                          "WHERE a.id IS NOT NULL ";
-
-        //    StringBuilder qb = new StringBuilder(profileQuery);
-        //    Dictionary<string, object> parameters = new Dictionary<string, object>();
-
-        //    if (Boolean.TrueString.Equals(profileReq.isDonor))
-        //    {
-        //        qb.Append(" AND a.is_donor = true ");
-        //    }
-        //    if (Boolean.TrueString.Equals(profileReq.isInfluencer))
-        //    {
-        //        qb.Append(" AND a.is_influencer = true ");
-        //    }
-        //    if (profileReq.homeCenterId > 0)
-        //    {
-        //        qb.Append(" AND a.home_center_id = @homeCenterId ");
-        //        parameters.Add("homeCenterId", profileReq.homeCenterId);
-        //    }
-        //    if (profileReq.relationshipId > 0)
-        //    {
-        //        qb.Append(" AND a.relationship_id = @relationshipId ");
-        //        parameters.Add("relationshipId", profileReq.relationshipId);
-        //    }
-        //    if (!string.IsNullOrEmpty(profileReq.gender))
-        //    {
-        //        qb.Append(" AND a.gender = @gender ");
-        //        parameters.Add("gender", profileReq.gender);
-        //    }
-        //    if (profileReq.ageGroup > 0)
-        //    {
-        //        qb.Append(" AND " + _sqlUtilService.AgeGroupQuery((int)profileReq.ageGroup));
-        //    }
-        //    if (profileReq.influencedById > 0)
-        //    {
-        //        qb.Append(" AND (c.id = @influencedById OR a.id = @influencedById) ");
-        //        parameters.Add("influencedById", profileReq.influencedById);
-        //    }
-        //    if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
-        //    {
-        //        qb.Append(" AND c.id IN (@influencerIds) ");
-        //        parameters.Add("influencerIds", profileReq.influencerIds);
-        //    }
-
-        //    var query = _context.profiles.FromSqlRaw(qb.ToString());
-        //    foreach (var parameter in parameters)
-        //    {
-        //        query = query.AsQueryable().Where(p => EF.Property<object>(p, parameter.Key) == parameter.Value);
-        //    }
-        //    List<ProfileModel> list = query.ToList();
-        //    return ObjectsToProfile(list.Select(p => new object[] { p.id, p.email, p.firstName, p.lastName }).ToList());
-        //}
 
         private List<ProfileDto> getProfileList(ProfileDto profileReq)
         {
@@ -721,9 +611,8 @@ namespace NewPlasmaDonorsAPI.Services
                                 firstName = reader["donorFirstName"]?.ToString(),
                                 lastName = reader["donorLastName"]?.ToString(),
                                 influencedById = reader["influencerId"] != DBNull.Value ? Convert.ToInt32(reader["influencerId"]) : 0,
-                                //InfluencerEmail = reader["influencerEmail"]?.ToString(),
-                                //InfluencerFirstName = reader["influencerFirstName"]?.ToString(),
-                                //InfluencerLastName = reader["influencerLastName"]?.ToString()
+                                name = NameUtils.Appender(" ", reader["donorFirstName"].ToString(), reader["donorLastName"].ToString())
+
                             });
                         }
                     }
@@ -737,24 +626,27 @@ namespace NewPlasmaDonorsAPI.Services
 
         private List<ProfileDto> ObjectsToProfile(List<object[]> infData)
         {
-            List<ProfileDto> profiles = infData
-                .Select(t =>
+            //List<ProfileDto> profiles = infData
+            //    .Select(t =>
+            return infData.Select(t => new ProfileDto
                 {
-                    long? id = NullUtils.GetNumValue(t[0]);
-                    long? infId = NullUtils.GetNumValue(t[1]);
-                    string firstName = Convert.ToString(t[4]);
-                    string lastName = Convert.ToString(t[5]);
+                     id = NullUtils.GetNumValue(t[0]) ?? 0,
+                     influencedById = NullUtils.GetNumValue(t[1]) ?? 0,
+                     email = Convert.ToString(t[2]),
+                     firstName = Convert.ToString(t[4]),
+                     lastName= Convert.ToString(t[5]),
+                     name = NameUtils.Appender(" ", Convert.ToString(t[4]), Convert.ToString(t[5]))
 
-                    return new ProfileDto
-                    {
-                        name = NameUtils.Appender(" ", firstName, lastName),
-                        email = Convert.ToString(t[2]),
-                        id = (long)id,
-                        influencedById = (long)infId
-                    };
+                    //return new ProfileDto
+                    //{
+                    //    name = NameUtils.Appender(" ", firstName, lastName),
+                    //    email = Convert.ToString(t[2]),
+                    //    id = (long)id,
+                    //    influencedById = (long)infId
+                    //};
                 }).ToList();
 
-            return profiles;
+            //return profiles;
 
         }
 
