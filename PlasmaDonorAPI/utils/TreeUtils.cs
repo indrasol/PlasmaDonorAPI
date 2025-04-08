@@ -49,10 +49,10 @@ namespace NewPlasmaDonorsAPI.utils
             return parentProfiles;
         }
 
-        private void ProcessForParent(Dictionary<long, ProfileDto> profiles, ProfileDto topProfile)
-        {
-            BuildHierarchy(topProfile, profiles);
-        }
+        //private void ProcessForParent(Dictionary<long, ProfileDto> profiles, ProfileDto topProfile)
+        //{
+        //    BuildHierarchy(topProfile, profiles);
+        //}
 
         private void PrintSubOrdinates(ProfileDto topProfileDto, int tabLevel = 0)
         {
@@ -79,25 +79,72 @@ namespace NewPlasmaDonorsAPI.utils
             return sameInfProfiles;
         }
 
-        private void BuildHierarchy(ProfileDto topProfileDto, Dictionary<long, ProfileDto> profiles)
+        private void ProcessForParent(Dictionary<long, ProfileDto> profiles, ProfileDto topProfile)
         {
-            if (topProfileDto == null)
+            if (topProfile == null || profiles == null) return;
+
+            BuildHierarchy(topProfile, profiles);
+        }
+        private void BuildHierarchy(ProfileDto parent, Dictionary<long, ProfileDto> profiles)
+        {
+            if (parent == null || parent.id == null) return;
+
+            // Find direct children of the current parent
+            var children = profiles.Values
+                .Where(p => p.influencedById == parent.id)
+                .ToList();
+
+            // Ensure parent's children list is initialized
+            if (parent.children == null)
             {
-                return;
+                parent.children = new List<ProfileDto>();
             }
 
-            var profileDtos = FindAllProfilesByInfId(topProfileDto.id, profiles);
-            topProfileDto.children = profileDtos;
-
-            if (profileDtos.Count == 0)
+            // Add each child to the parent's children list and recurse
+            foreach (var child in children)
             {
-                return;
-            }
-
-            foreach (var e in profileDtos)
-            {
-                BuildHierarchy(e, profiles);
+                parent.children.Add(child);
+                BuildHierarchy(child, profiles); // Recursively add grandchildren
             }
         }
+
+        //private void BuildHierarchy(ProfileDto parent, Dictionary<long, ProfileDto> profiles)
+        //{
+        //    // Find direct children of the current parent
+        //    var children = profiles.Values
+        //        .Where(p => p.influencedById == parent.id)
+        //        .ToList();
+
+        //    // Add each child to the parent's children list and recurse
+        //    foreach (var child in children)
+        //    {
+        //        parent.children.Add(child);
+        //        BuildHierarchy(child, profiles); // Recursively find grandchildren, etc.
+        //    }
+        //}
+
+
+
+
+        //private void BuildHierarchy(ProfileDto topProfileDto, Dictionary<long, ProfileDto> profiles)
+        //{
+        //    if (topProfileDto == null)
+        //    {
+        //        return;
+        //    }
+
+        //    var profileDtos = FindAllProfilesByInfId(topProfileDto.id, profiles);
+        //    topProfileDto.children = profileDtos;
+
+        //    if (profileDtos.Count == 0)
+        //    {
+        //        return;
+        //    }
+
+        //    foreach (var e in profileDtos)
+        //    {
+        //        BuildHierarchy(e, profiles);
+        //    }
+        //}
     }
 }

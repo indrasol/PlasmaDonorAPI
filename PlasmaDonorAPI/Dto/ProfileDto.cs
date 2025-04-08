@@ -91,7 +91,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public String? influencedBy { get; set; }
 
         public long? influencedById { get; set; }
+        public List<ProfileDto>? children { get; set; }
 
-        public List<ProfileDto> children = new List<ProfileDto>();
     }
 }

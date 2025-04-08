@@ -253,7 +253,7 @@ namespace NewPlasmaDonorsAPI.Services
                 var qb = new StringBuilder();
                 var parameters = new List<object>();
 
-                qb.Append("SELECT IFNULL(title,'Not Mentioned') AS title, CONVERT(IFNULL(value,0),CHAR) AS valStr, NULL AS bgColor, NULL AS icon, IFNULL(value,0) AS value, NULL AS cont FROM (");
+                qb.Append("SELECT IFNULL(title,'Not Mentioned') AS title, CONVERT(IFNULL(value,0),CHAR) AS valStr, NULL AS bgColor, NULL AS icon, IFNULL(value,0) AS value, IFNULL(value,0) AS cont FROM (");
 
                 // Base query setup based on type
                 if (!string.IsNullOrEmpty(type))
@@ -323,8 +323,8 @@ namespace NewPlasmaDonorsAPI.Services
                     //parameters.Add(profileReq.gender);
                     //qb.Append(" AND a.gender = '{profileReq.gender}'");
 
-                    qb.Append("AND gender = @Gender");
-                    parameters.Add(new MySqlParameter("@Gender", profileReq.gender));
+                    qb.Append($" AND a.gender IN ('{profileReq.gender}')");
+                    //parameters.Add(new MySqlParameter("@Gender", profileReq.gender));
 
 
                 }
@@ -447,26 +447,20 @@ namespace NewPlasmaDonorsAPI.Services
             return res;
         }
 
-
         public async Task<ResInfo> InfluencerTreeData(ProfileDto profileReq)
         {
             if (profileReq == null) return Success(new List<ProfileDto>());
 
             List<ProfileDto> profiles = getProfileList(profileReq);
 
-            if (profileReq?.influencedById != null)
-            {
-                List<long> pIds = profiles
-                    .Where(p => p.id != null && profileReq.influencedById != null && p.id != profileReq.influencedById)
-                    .Select(p => (long)p.id)
-                    .ToList();
 
-                getProfileList(new ProfileDto { influencerIds = pIds });
-            }
+            var visited = new HashSet<long>(profiles.Where(p => p.id.HasValue).Select(p => p.id.Value));
+            LoadRecursiveInfluencers(profiles, 1, 10, visited); // up to 10 levels deep
+
 
             List<long?> profileIds = profiles
-                .Where(p => p.id != null)
-                .Select(p => p.influencedById)
+                .Where(p => p.id.HasValue)
+                .Select(p => p.id)
                 .ToList();
 
             var scoreMap = (await _statRepo.GetScoreByInfIdsAsync(profileIds))
@@ -475,36 +469,124 @@ namespace NewPlasmaDonorsAPI.Services
             profiles.ForEach(p =>
             {
                 long profileId = (long)p.id;
-                //double score = (double)p.infScore;
                 if (scoreMap.TryGetValue(profileId, out double score))
                 {
                     p.name = p.name ?? $"{p.firstName} {p.lastName}";
                     p.name += $" ({score})";
-                    p.infScore = score;
-                    //p.name += $" ({scoreMap[(long)p.id]})";
                 }
             });
 
+
             var rootProfiles = _treeUtils.Process(profiles, null)
-                 .Select(p => new ProfileDto
-                 {
-                     id = p.id,
-                     name = p.name,
-                     email = p.email,
-                     firstName = p.firstName,
-                     lastName = p.lastName,
-                     influencedById = p.influencedById,
-                     interests = p.interests,
-                     infScore = p.infScore,
-                     children = p.children ?? new List<ProfileDto>(),
-                     isExpanded = (p.infScore > 0 && (p.children?.Count ?? 0) > 0)
-                     
-                 })
-                .OrderByDescending(w => w.children.Count)
+                .Select(p => new ProfileDto
+                {
+                    id = p.id,
+                    name = p.name,
+                    email = p.email,
+                    firstName = p.firstName,
+                    lastName = p.lastName,
+                    influencedById = p.influencedById,
+                    interests = p.interests,
+                    infScore = p.infScore,
+                    children = p.children?.Any() == true ? p.children : null,
+                    isExpanded = p.children?.Any() == true
+                })
+                .OrderByDescending(w => w.children?.Count ?? 0)
                 .Take(5)
                 .ToList();
+
             return Success(rootProfiles);
         }
+
+        private void LoadRecursiveInfluencers(List<ProfileDto> allProfiles, int depth, int maxDepth, HashSet<long> visitedIds)
+        {
+            if (depth > maxDepth) return;
+
+            // Get unique influencer IDs from current list
+            var influencerIds = allProfiles
+                .Where(p => p.id.HasValue && !visitedIds.Contains(p.id.Value))
+                .Select(p => p.id.Value)
+                .Distinct()
+                .ToList();
+
+            if (!influencerIds.Any()) return;
+
+            visitedIds.UnionWith(influencerIds);
+
+
+            var childProfiles = getProfileList(new ProfileDto { influencerIds = influencerIds });
+
+            foreach (var child in childProfiles)
+            {
+                if (!allProfiles.Any(p => p.id == child.id))
+                {
+                    allProfiles.Add(child);
+                }
+            }
+
+
+            LoadRecursiveInfluencers(allProfiles, depth + 1, maxDepth, visitedIds);
+        }
+
+
+
+        //public async Task<ResInfo> InfluencerTreeData(ProfileDto profileReq)
+        //{
+        //    if (profileReq == null) return Success(new List<ProfileDto>());
+
+        //    List<ProfileDto> profiles = getProfileList(profileReq);
+
+        //    if (profileReq?.influencedById != null)
+        //    {
+        //        List<long> pIds = profiles
+        //            .Where(p => p.id != null && profileReq.influencedById != null && p.id != profileReq.influencedById)
+        //            .Select(p => (long)p.id)
+        //            .ToList();
+
+        //        getProfileList(new ProfileDto { influencerIds = pIds });
+        //    }
+
+        //    List<long?> profileIds = profiles
+        //        .Where(p => p.id != null)
+        //        .Select(p => p.influencedById)
+        //        .ToList();
+
+        //    var scoreMap = (await _statRepo.GetScoreByInfIdsAsync(profileIds))
+        //        .ToDictionary(t => t.Item1, t => (double)t.Item2);
+
+        //    profiles.ForEach(p =>
+        //    {
+        //        long profileId = (long)p.id;
+        //        //double score = (double)p.infScore;
+        //        if (scoreMap.TryGetValue(profileId, out double score))
+        //        {
+        //            p.name = p.name ?? $"{p.firstName} {p.lastName}";
+        //            p.name += $" ({score})";
+        //            p.infScore = score;
+        //            //p.name += $" ({scoreMap[(long)p.id]})";
+        //        }
+        //    });
+
+        //    var rootProfiles = _treeUtils.Process(profiles, null)
+        //         .Select(p => new ProfileDto
+        //         {
+        //             id = p.id,
+        //             name = p.name,
+        //             email = p.email,
+        //             firstName = p.firstName,
+        //             lastName = p.lastName,
+        //             influencedById = p.influencedById,
+        //             interests = p.interests,
+        //             infScore = p.infScore,
+        //             children = p.children ?? new List<ProfileDto>(),
+        //             isExpanded = (p.infScore > 0 && (p.children?.Count ?? 0) > 0)
+
+        //         })
+        //        .OrderByDescending(w => w.children.Count)
+        //        .Take(5)
+        //        .ToList();
+        //    return Success(rootProfiles);
+        //}
 
         private List<ProfileDto> getProfileList(ProfileDto profileReq)
         {
@@ -539,17 +621,17 @@ namespace NewPlasmaDonorsAPI.Services
             if (profileReq.homeCenterId > 0)
             {
                 conditions.Add("a.home_center_id = @homeCenterId");
-                sqlParams.Add(new SqlParameter("@homeCenterId", profileReq.homeCenterId));
+                sqlParams.Add(new MySqlParameter("@homeCenterId", profileReq.homeCenterId));
             }
             if (profileReq.relationshipId > 0)
             {
                 conditions.Add("a.relationship_id = @relationshipId");
-                sqlParams.Add(new SqlParameter("@relationshipId", profileReq.relationshipId));
+                sqlParams.Add(new MySqlParameter("@relationshipId", profileReq.relationshipId));
             }
             if (!string.IsNullOrEmpty(profileReq.gender))
             {
                 conditions.Add("a.gender = @gender");
-                sqlParams.Add(new SqlParameter("@gender", profileReq.gender));
+                sqlParams.Add(new MySqlParameter("@gender", profileReq.gender));
             }
             if (profileReq.ageGroup > 0)
             {
@@ -558,7 +640,7 @@ namespace NewPlasmaDonorsAPI.Services
             if (profileReq.influencedById > 0)
             {
                 conditions.Add("(c.id = @influencedById OR a.id = @influencedById)");
-                sqlParams.Add(new SqlParameter("@influencedById", profileReq.influencedById));
+                sqlParams.Add(new MySqlParameter("@influencedById", profileReq.influencedById));
             }
             if (profileReq.influencerIds != null && profileReq.influencerIds.Any())
             {
@@ -570,20 +652,6 @@ namespace NewPlasmaDonorsAPI.Services
             {
                 profileQuery += " AND " + string.Join(" AND ", conditions);
             }
-
-            //var query = _context.profiles.FromSqlRaw(profileQuery, sqlParams.ToArray()).ToList();
-
-            //return query.Select(p => new ProfileDto
-            //{
-            //    id = p.donorId,
-            //    email = p.donorEmail,
-            //    firstName = p.donorFirstName,
-            //    lastName = p.donorLastName,
-            //    influencedById = p.influencerId,
-            //    InfluencerEmail = p.influencerEmail,
-            //    InfluencerFirstName = p.influencerFirstName,
-            //    InfluencerLastName = p.influencerLastName
-            //}).ToList();
 
             List<ProfileDto> profiles = new List<ProfileDto>();
 
