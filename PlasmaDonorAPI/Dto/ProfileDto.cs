@@ -88,10 +88,13 @@ namespace NewPlasmaDonorsAPI.Dto
         public long? languageId { get; set; }
 
         public string? status { get; set; }
-        public String? influencedBy { get; set; }
+        public string? influencedBy { get; set; }
 
         public long? influencedById { get; set; }
         public List<ProfileDto>? children { get; set; }
+
+
+
 
     }
 }

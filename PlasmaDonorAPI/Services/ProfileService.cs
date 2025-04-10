@@ -73,7 +73,7 @@ namespace NewPlasmaDonorsAPI.Services
 
                 var sb = new StringBuilder(query);
 
-                // **Filtering Conditions**
+               
                 if (profileReq.isDonor.HasValue && profileReq.isDonor.Value)
                 {
                     sb.Append(" AND a.is_donor = 1 ");
@@ -149,7 +149,11 @@ namespace NewPlasmaDonorsAPI.Services
                                     postalCode = reader["postal_code"].ToString(),
                                     homeCenterId = reader["homeCenterId"] != DBNull.Value ? (long?)reader["homeCenterId"] : null,
                                     relshipStatus = reader["relship_status"].ToString(),
-                                    id = (long)reader["id"]
+                                    id = (long)reader["id"],
+                                    //hobbieStr = reader["hobbie_str"]?.ToString()
+                                    //interestStr = reader["interest_str"]?.ToString(),
+                                    //homeCenter = reader["site_name"]?.ToString(),
+
                                 });
                             }
                         }

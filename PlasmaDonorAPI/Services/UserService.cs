@@ -259,7 +259,7 @@ namespace NewPlasmaDonorsAPI.Services
                 status = e.status,
                 createdOn = DateUtils.ToShortString(e.createdOn),
                 updatedOn = DateUtils.ToShortString(e.updatedOn),
-                companyId = e.company,
+                //companyId = e.company,
                 roleId = e.roleId,
                 companyLocationId = e.companyLocation
 

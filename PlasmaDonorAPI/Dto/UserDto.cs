@@ -17,7 +17,7 @@ namespace NewPlasmaDonorsAPI.Dto
         public string? status { get; set; }
         public string? company { get; set; }
 
-        public long? companyId { get; set; }
+        //public long? companyId { get; set; }
         public string? companyLocation { get; set; }
        
         public string? createdOn { get; set; }
@@ -29,7 +29,6 @@ namespace NewPlasmaDonorsAPI.Dto
         public bool credentialsNonExpired { get; set; }
         public bool enabled { get; set; }
         public bool deleted { get; set; } = false;
-
         public string? token { get; set; }
     }
 }
